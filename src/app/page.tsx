@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Modal from './components/Modal';
+import { SpeedInsights } from "@vercel/speed-insights/next"
 // import Image from "next/image";
 
 const Home = () => {
@@ -65,6 +66,7 @@ const Home = () => {
         </div>
       </main>
       <Modal show={showModal} onClose={handleModal} />
+      <SpeedInsights />
     </div>
   );
 };
