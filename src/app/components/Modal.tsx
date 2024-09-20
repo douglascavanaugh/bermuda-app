@@ -7,7 +7,7 @@ interface ModalProps {
 }
 
 const Modal: React.FC<ModalProps> = ({ show, onClose }) => {
-  // const [adminAction, setAdminAction] = useState<boolean>(false);
+
   // Close the modal if escape is pressed
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
