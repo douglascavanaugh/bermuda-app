@@ -11,7 +11,6 @@ const Home = () => {
   const [reportsData, setReportsData] = useState<boolean>(false);
   const [adminAction, setAdminAction] = useState<string>('');
 
-
   const handleModalOpen = (e: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
     e.preventDefault();
     setShowModal(true);

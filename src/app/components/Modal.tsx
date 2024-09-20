@@ -11,7 +11,6 @@ const Modal: React.FC<ModalProps> = ({ show, onClose }) => {
   // Close the modal if escape is pressed
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
-      console.log('MODALING')
       if (event.key === 'Escape') onClose('');
     };
     document.addEventListener('keydown', handleEscape);
