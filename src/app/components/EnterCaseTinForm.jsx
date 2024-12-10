@@ -211,26 +211,22 @@ export default function EnterCaseTinForm() {
   };
 
   const handleConfirmSubmit = async () => {
-    const allForms = [...formDataList, currentForm];
-    
-    // Function to process forms in batches
+    // Use only the forms in formDataList
     const processBatch = async (forms, batchSize = 5) => {
       for (let i = 0; i < forms.length; i += batchSize) {
         const batch = forms.slice(i, i + batchSize);
         
-        // Process each form in the current batch
         for (const formData of batch) {
           generatePDF(formData);
         }
         
-        // Add a delay between batches
         if (i + batchSize < forms.length) {
           await new Promise(resolve => setTimeout(resolve, 1000));
         }
       }
     };
 
-    await processBatch(allForms);
+    await processBatch(formDataList);
     
     setSuccessMessage('Forms successfully created!');
     setTimeout(() => setSuccessMessage(''), 3000);
@@ -265,11 +261,14 @@ export default function EnterCaseTinForm() {
     const lines = cleanedText.split('\n');
     console.log('Parsed lines:', lines);
     
-    // Updated patterns
-    const namePattern = /^([A-Za-z]+)(?:\s+([A-Za-z.]+))?\s+([A-Za-z]+)$/;
+    // Two patterns: one for standard names and one for hyphenated names with colons
+    const standardNamePattern = /^([A-Za-z]+)(?:\s+([A-Za-z.]+))?\s+([A-Za-z]+)$/;
+    const specialNamePattern = /^([A-Za-z-]+(?:Ray:)?)\s+([A-Za-z]+)$/;
     
     // Updated to require comma between city and state
-    const cityStateZipPattern = /^(.*?),\s*((?:[A-Za-z]+\s+)*[A-Za-z]+)\s+\[?(\d{5})\]?$/;
+    // const cityStateZipPattern = /^(.*?),\s*((?:[A-Za-z]+\s+)*[A-Za-z]+)\s+\[?(\d{5})\]?$/;
+    // Update the cityStateZipPattern in handlePaste
+    const cityStateZipPattern = /^(.*?),\s*((?:[A-Za-z]+\s+)*[A-Za-z]+)\s+\[(\d{5})\]$/;
     
     const ssnPattern = /^\d{4}$/;
     
@@ -278,8 +277,32 @@ export default function EnterCaseTinForm() {
     
     try {
       // Parse name line
-      const nameParts = lines[0].match(namePattern);
-      if (!nameParts) throw new Error('Invalid name format. Expected: First [Middle] Last');
+      const nameLine = lines[0];
+      let firstName, middleName, lastName;
+
+      // Try standard pattern first
+      const standardMatch = nameLine.match(standardNamePattern);
+      if (standardMatch) {
+        [, firstName, middleName, lastName] = standardMatch;
+        middleName = middleName || '';
+      } else {
+        // Try special pattern
+        const specialMatch = nameLine.match(specialNamePattern);
+        if (specialMatch) {
+          const [, firstPart, last] = specialMatch;
+          if (firstPart.includes(':')) {
+            // Keep the colon in the firstName
+            firstName = firstPart;  // This will keep "Martin-Ray:"
+            middleName = '';
+          } else {
+            firstName = firstPart;
+            middleName = '';
+          }
+          lastName = last;
+        } else {
+          throw new Error('Invalid name format. Expected: First [Middle] Last or First-Name: Last');
+        }
+      }
       
       // Address is line[1] - just needs to exist
       if (!lines[1].trim()) throw new Error('Address is required');
@@ -297,12 +320,6 @@ export default function EnterCaseTinForm() {
       // Parse TDA - just check if it exists since format is very flexible
       if (!lines[4] || !lines[4].trim()) throw new Error('TDA value is required');
       
-      // If we get here, all patterns matched
-      const [firstName, middleName, lastName] = [
-        nameParts[1], 
-        nameParts[2] || '', 
-        nameParts[3]
-      ];
       const address = lines[1];
       const [city, state, zip] = [
         locationParts[1].trim(),
@@ -331,7 +348,7 @@ export default function EnterCaseTinForm() {
         address: address.trim(),
         city: city.trim(),
         state: getStateAbbreviation(state),
-        zip,
+        zip: `[${zip}]`,
         ssn,
         tdaNo
       });
@@ -375,7 +392,7 @@ export default function EnterCaseTinForm() {
       <div className="bg-gray-700 rounded-lg p-6 max-w-md w-full mx-4">
         <h3 className="text-white font-mono-bold mb-4">Confirm Submission</h3>
         <p className="text-gray-200 mb-4">
-          You are about to create {formDataList.length + 1} form(s). 
+          You are about to create {formDataList.length} form(s). 
           This action cannot be undone.
         </p>
         <div className="flex justify-end space-x-2">
