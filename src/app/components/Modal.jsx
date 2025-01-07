@@ -6,22 +6,15 @@ function Modal({ show, onClose, onSelect }) {
   if (!show) return null;
 
   const menuItems = [
-    { key: 'A', title: 'APPROVALS', view: 'APPROVALS' },
-    { key: 'B', title: 'ASSIGNMENTS', view: 'ASSIGNMENTS' },
-    { key: 'C', title: 'NOTIFICATIONS', view: 'NOTIFICATIONS' },
-    { key: 'D', title: 'ACTIVE INVENTORY', view: 'ACTIVE INVENTORY' },
-    { key: 'E', title: 'CLOSED CASES', view: 'CLOSED CASES' },
-    { key: 'F', title: 'ENTER CASE TIN', view: 'ENTER CASE TIN' },
-    { key: 'G', title: 'ENTER NA CASE TIN', view: 'ENTER NA CASE TIN' },
-    { key: 'H', title: 'CASE MAINTENANCE', view: 'CASE MAINTENANCE' },
-    { key: 'I', title: 'PARAMETER TABLES', view: 'PARAMETER TABLES' },
-    { key: 'J', title: 'RESERVED', view: 'RESERVED' },
-    { key: 'K', title: 'ICS SYSTEM MESSAGES', view: 'ICS SYSTEM MESSAGES' },
-    { key: 'L', title: 'TIME REPORTING', view: 'TIME REPORTING' },
-    { key: 'M', title: 'ENTER ARCHIVE CASE TIN', view: 'ENTER ARCHIVE CASE TIN' },
-    { key: 'N', title: 'COLLECTION CONSULTATION', view: 'COLLECTION CONSULTATION' },
-    { key: 'O', title: 'COMS', view: 'COMS' },
-    { key: 'P', title: 'SIA REJECT NOTIFICATION', view: 'SIA REJECT NOTIFICATION' }
+    { key: 'A', title: 'BERMUDA', view: 'BERMUDA' },
+    { key: 'B', title: 'HAWAII', view: 'HAWAII' },
+    { key: 'C', title: 'TBD', view: 'TBD' },
+    { key: 'D', title: 'TBD', view: 'TBD' },
+    { key: 'E', title: 'TBD', view: 'TBD' },
+    { key: 'F', title: 'TBD', view: 'TBD' },
+    { key: 'G', title: 'TBD', view: 'TBD' },
+    { key: 'H', title: 'TBD', view: 'TBD' },
+    { key: 'I', title: 'TBD', view: 'TBD' },
   ];
 
   const handleSelect = (item) => {

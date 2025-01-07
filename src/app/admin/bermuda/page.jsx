@@ -3,34 +3,21 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-interface FormData {
-  firstName: string;
-  lastName: string;
-  address: string;
-  city: string;
-  state: string;
-  zip: string;
-  ssn: string;
-  tdaNo: string;
-}
-
-const initialFormData: FormData = {
-  firstName: '',
-  lastName: '',
-  address: '',
-  city: '',
-  state: '',
-  zip: '',
-  ssn: '',
-  tdaNo: ''
-};
-
 export default function EnterCaseTin() {
   const router = useRouter();
-  const [formDataList, setFormDataList] = useState<FormData[]>([]);
-  const [currentForm, setCurrentForm] = useState<FormData>(initialFormData);
+  const [formDataList, setFormDataList] = useState([]);
+  const [currentForm, setCurrentForm] = useState({
+    firstName: '',
+    lastName: '',
+    address: '',
+    city: '',
+    state: '',
+    zip: '',
+    ssn: '',
+    tdaNo: ''
+  });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     const allForms = [...formDataList, currentForm];
     // Generate PDFs for all forms
@@ -41,10 +28,19 @@ export default function EnterCaseTin() {
 
   const handleAddMore = () => {
     setFormDataList([...formDataList, currentForm]);
-    setCurrentForm(initialFormData);
+    setCurrentForm({
+      firstName: '',
+      lastName: '',
+      address: '',
+      city: '',
+      state: '',
+      zip: '',
+      ssn: '',
+      tdaNo: ''
+    });
   };
 
-  const generatePDF = (formData: FormData) => {
+  const generatePDF = (formData) => {
     // Here you would implement PDF generation
     // For now, we'll just console.log the data
     console.log('Generating PDF for:', formData);

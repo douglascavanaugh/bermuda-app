@@ -6,13 +6,15 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "generate-hawaii-template": "python src/templates/create_hawaii_template.py"
   },
   "dependencies": {
     "@geist-ui/core": "^2.3.8",
     "@vercel/speed-insights": "1.0.12",
     "geist": "^1.3.1",
     "jspdf": "^2.5.2",
+    "jspdf-autotable": "^3.8.4",
     "next": "^14.2.12",
     "react": "^18",
     "react-dom": "^18"

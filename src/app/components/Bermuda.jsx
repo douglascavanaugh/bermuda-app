@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import jsPDF from 'jspdf';
-// import { useRouter } from 'next/navigation';
 
 const initialFormData = {
   firstName: '',
@@ -80,14 +79,15 @@ const stateMapping = {
   'wyoming': 'WY'
 };
 
-export default function EnterCaseTinForm() {
-  // const router = useRouter();
+export default function BermudaForm() {
   const [formDataList, setFormDataList] = useState([]);
   const [currentForm, setCurrentForm] = useState(initialFormData);
   const [errors, setErrors] = useState(initialErrors);
   const [successMessage, setSuccessMessage] = useState('');
   const [showStoredForms, setShowStoredForms] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [progress, setProgress] = useState({ current: 0, total: 0, errors: [] });
 
   const validateForm = () => {
     let isValid = true;
@@ -129,8 +129,8 @@ export default function EnterCaseTinForm() {
     //   newErrors.zip = 'ZIP must be 5 digits';
     //   isValid = false;
     // }
-    if (!/^\[?\d{5}\]?$/.test(currentForm.zip.replace(/[\(\)]/g, ''))) {
-      newErrors.zip = 'ZIP must be 5 digits';
+    if (!/^\d{5}$|^\[\d{5}\]$/.test(currentForm.zip)) {
+      newErrors.zip = 'ZIP must be 5 digits or [12345]';
       isValid = false;
     }
 
@@ -159,6 +159,8 @@ export default function EnterCaseTinForm() {
     
     // Set font size for content
     doc.setFontSize(12);
+
+    console.log('PDF FORMDATA:', formData);
     
     // Add form data
     const content = [
@@ -199,6 +201,13 @@ export default function EnterCaseTinForm() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    // If we have items in formDataList from pasting, skip all validation
+    if (formDataList.length > 0) {
+      setShowConfirmDialog(true);
+      return;
+    }
+    
+    // Otherwise, validate and handle manual entry
     if (validateForm()) {
       // Add current form to the list if it's not empty
       if (Object.values(currentForm).some(value => value !== '')) {
@@ -248,118 +257,187 @@ export default function EnterCaseTinForm() {
     return stateMapping[normalizedState] || stateName;
   };
 
-  const handlePaste = (e) => {
+  const handlePaste = async (e) => {
     e.preventDefault();
     const pastedText = e.clipboardData.getData('text');
-    console.log('Raw pasted text:', pastedText);
+    console.log('Raw pasted text:', pastedText);  // First log
     
     const cleanedText = pastedText
       .trim()
       .replace(/\r\n/g, '\n')
       .replace(/\r/g, '\n');
+    console.log('Cleaned text:', cleanedText);  // Second log
     
-    const lines = cleanedText.split('\n');
-    console.log('Parsed lines:', lines);
+    // Split into 5-line entries (accounting for blank line separators)
+    const entries = cleanedText.split(/\n{2,}/)
+      .filter(entry => entry.trim())
+      .map(entry => entry.split('\n').filter(line => line.trim()));
+    console.log('Parsed entries:', entries);  // Third log
     
-    // Two patterns: one for standard names and one for hyphenated names with colons
-    const standardNamePattern = /^([A-Za-z]+)(?:\s+([A-Za-z.]+))?\s+([A-Za-z]+)$/;
-    const specialNamePattern = /^([A-Za-z-]+(?:Ray:)?)\s+([A-Za-z]+)$/;
+    // Validate entry count
+    const entryCount = entries.length;
+    console.log(`Found ${entryCount} entries to process`);
     
-    // Updated to require comma between city and state
-    // const cityStateZipPattern = /^(.*?),\s*((?:[A-Za-z]+\s+)*[A-Za-z]+)\s+\[?(\d{5})\]?$/;
-    // Update the cityStateZipPattern in handlePaste
-    const cityStateZipPattern = /^(.*?),\s*((?:[A-Za-z]+\s+)*[A-Za-z]+)\s+\[(\d{5})\]$/;
-    
-    const ssnPattern = /^\d{4}$/;
-    
-    // Much more flexible TDA pattern
-    const tdaPattern = /^\[?(?:YES|NO)\]?$|^(?:\d{2}-[\d-]+(?:-[A-Z]+)?|\[?[A-Z]+\]?)$/;
+    if (entryCount === 0) {
+      setSuccessMessage('No valid entries found to process');
+      return;
+    }
+
+    // Start processing
+    setIsProcessing(true);
+    setProgress({ current: 0, total: entryCount, errors: [] });
     
     try {
-      // Parse name line
-      const nameLine = lines[0];
-      let firstName, middleName, lastName;
-
-      // Try standard pattern first
-      const standardMatch = nameLine.match(standardNamePattern);
-      if (standardMatch) {
-        [, firstName, middleName, lastName] = standardMatch;
-        middleName = middleName || '';
-      } else {
-        // Try special pattern
-        const specialMatch = nameLine.match(specialNamePattern);
-        if (specialMatch) {
-          const [, firstPart, last] = specialMatch;
-          if (firstPart.includes(':')) {
-            // Keep the colon in the firstName
-            firstName = firstPart;  // This will keep "Martin-Ray:"
-            middleName = '';
-          } else {
-            firstName = firstPart;
-            middleName = '';
+      // Process in batches of 50
+      const BATCH_SIZE = 50;
+      let processedEntries = [];
+      let errors = [];
+      
+      for (let i = 0; i < entries.length; i += BATCH_SIZE) {
+        const batch = entries.slice(i, i + BATCH_SIZE);
+        
+        // Process each entry in the current batch
+        for (const [index, lines] of batch.entries()) {
+          const currentIndex = i + index;
+          console.log('Processing lines:', lines);  // Fourth log
+          
+          try {
+            if (lines.length !== 5) {
+              throw new Error(`Invalid entry format at position ${currentIndex + 1}`);
+            }
+            
+            // Parse the entry
+            const parsedData = await parseEntry(lines);
+            console.log('Parsed data:', parsedData);  // Fifth log
+            processedEntries.push(parsedData);
+            
+          } catch (error) {
+            console.error('Parse error:', error);  // Sixth log
+            errors.push({
+              index: currentIndex,
+              lines,
+              error: error.message
+            });
           }
-          lastName = last;
-        } else {
-          throw new Error('Invalid name format. Expected: First [Middle] Last or First-Name: Last');
+          
+          // Update progress
+          setProgress(prev => ({
+            ...prev,
+            current: currentIndex + 1,
+            errors
+          }));
         }
+        
+        // Small delay between batches to prevent UI freezing
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+
+      // Add ALL successful entries to formDataList at once
+      setFormDataList(prev => [...prev, ...processedEntries]);
+      
+      // Final status update
+      const successCount = processedEntries.length;
+      setSuccessMessage(
+        `Processing complete: ${successCount} successful, ${errors.length} failed. ` +
+        (errors.length > 0 ? 'Check console for error details.' : '')
+      );
+      
+      if (errors.length > 0) {
+        console.log('Processing errors:', errors);
       }
       
-      // Address is line[1] - just needs to exist
-      if (!lines[1].trim()) throw new Error('Address is required');
-      
-      // Parse city/state/zip line
-      const locationParts = lines[2].match(cityStateZipPattern);
-      if (!locationParts) {
-        console.log('Failed to parse location:', lines[2]); // Debug log
-        throw new Error('Invalid city/state/zip format. Expected: City, State [ZIP]');
-      }
-      
-      // Parse SSN
-      if (!ssnPattern.test(lines[3])) throw new Error('Invalid SSN format. Expected: 4 digits');
-      
-      // Parse TDA - just check if it exists since format is very flexible
-      if (!lines[4] || !lines[4].trim()) throw new Error('TDA value is required');
-      
-      const address = lines[1];
-      const [city, state, zip] = [
-        locationParts[1].trim(),
-        locationParts[2].trim(),
-        locationParts[3]
-      ];
-      const ssn = lines[3];
-      const tdaNo = lines[4].trim();
-      
-      console.log('Parsed data:', {
-        firstName,
-        middleName,
-        lastName,
-        address,
-        city,
-        state,
-        zip,
-        ssn,
-        tdaNo
-      });
-      
-      setCurrentForm({
-        firstName,
-        middleName,
-        lastName,
-        address: address.trim(),
-        city: city.trim(),
-        state: getStateAbbreviation(state),
-        zip: `[${zip}]`,
-        ssn,
-        tdaNo
-      });
-      
-      setSuccessMessage('Data pasted successfully!');
     } catch (error) {
-      console.error('Parse error:', error.message);
-      setSuccessMessage(`Error: ${error.message}`);
+      setSuccessMessage(`Processing failed: ${error.message}`);
+    } finally {
+      setIsProcessing(false);
+      setTimeout(() => setSuccessMessage(''), 5000);
     }
+  };
+
+  // Helper function to parse a single entry
+  const parseEntry = async (lines) => {
+    const [nameLine, addressLine, locationLine, ssnLine, tdaLine] = lines;
     
-    setTimeout(() => setSuccessMessage(''), 3000);
+    // Use our existing patterns
+    const standardNamePattern = /^([A-Za-z]+)(?:\s+([A-Za-z.]+))?\s+([A-Za-z]+)$/;
+    const specialNamePattern = /^([A-Za-z-]+(?:Ray:)?)\s+([A-Za-z]+)$/;
+    const cityStateZipPattern = /^(.*?),\s*((?:[A-Za-z]+\s+)*[A-Za-z]+)\s+(?:\[?(\d{5})\]?)$/;
+    
+    // Parse name
+    let firstName, middleName, lastName;
+    const standardMatch = nameLine.match(standardNamePattern);
+    if (standardMatch) {
+      [, firstName, middleName, lastName] = standardMatch;
+      middleName = middleName || '';
+    } else {
+      const specialMatch = nameLine.match(specialNamePattern);
+      if (specialMatch) {
+        const [, firstPart, last] = specialMatch;
+        if (firstPart.includes(':')) {
+          firstName = firstPart;
+          middleName = '';
+        } else {
+          firstName = firstPart;
+          middleName = '';
+        }
+        lastName = last;
+      } else {
+        throw new Error('Invalid name format');
+      }
+    }
+
+    // Parse location
+    const locationMatch = locationLine.match(cityStateZipPattern);
+    if (!locationMatch) {
+      throw new Error('Invalid city/state/zip format');
+    }
+
+    // Log the full match for debugging
+    console.log('Location match:', locationMatch);
+    
+    // Now we'll get the ZIP in position 3 regardless of brackets
+    const [_, city, state, zip] = locationMatch;
+    
+    return {
+      firstName,
+      middleName,
+      lastName,
+      address: addressLine.trim(),
+      city: city.trim(),
+      state: getStateAbbreviation(state.trim()),
+      zip: zip,
+      ssn: ssnLine.trim(),
+      tdaNo: tdaLine.trim()
+    };
+  };
+
+  const ProcessingIndicator = ({ progress, isProcessing }) => {
+    if (!isProcessing) return null;
+    
+    const percent = Math.round((progress.current / progress.total) * 100);
+    
+    return (
+      <div className="fixed bottom-4 right-4 bg-gray-800 p-4 rounded-lg shadow-lg w-80">
+        <div className="flex justify-between text-white mb-2">
+          <span>Processing entries...</span>
+          <span>{percent}%</span>
+        </div>
+        <div className="w-full h-2 bg-gray-700 rounded-full">
+          <div 
+            className="h-full bg-green-500 rounded-full transition-all duration-200"
+            style={{ width: `${percent}%` }}
+          />
+        </div>
+        <div className="text-gray-300 text-sm mt-2">
+          {progress.current} of {progress.total} entries
+        </div>
+        {progress.errors.length > 0 && (
+          <div className="text-red-400 text-sm mt-1">
+            {progress.errors.length} errors found
+          </div>
+        )}
+      </div>
+    );
   };
 
   const StoredFormsView = () => (
@@ -426,23 +504,22 @@ export default function EnterCaseTinForm() {
   `;
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-2xl mx-auto overflow-visible">
       <div className="bg-gray-700 rounded-md shadow-lg p-6 h-full">
         <h2 className="text-xl font-mono-bold text-center text-white mb-6">
-          CASE TIN
+          BERMUDA FORM
         </h2>
         
         {/* Dedicated paste zone instructions */}
-        <div 
+        <div
           className="mb-6 p-4 border-2 border-dashed border-gray-500 rounded-lg 
                     text-center cursor-pointer bg-gray-800 hover:bg-gray-750"
           onPaste={handlePaste}
-          tabIndex="0" // Makes the div focusable
+          tabIndex="0"
           onClick={() => {
-            console.log('Paste zone clicked'); // Debug log
+            console.log('Paste zone clicked');
             navigator.clipboard.readText()
               .then(text => {
-                console.log('Clipboard text:', text); // Debug log
                 const e = { 
                   preventDefault: () => {}, 
                   clipboardData: { getData: () => text } 
@@ -450,21 +527,26 @@ export default function EnterCaseTinForm() {
                 handlePaste(e);
               })
               .catch(err => {
-                console.error('Clipboard error:', err); // Debug log
                 setSuccessMessage('Please use Ctrl+V or Cmd+V to paste');
                 setTimeout(() => setSuccessMessage(''), 3000);
               });
-            }}
-          >
-          <p className="text-gray-300">Click here and paste (Ctrl+V or Cmd+V)</p>
-          <pre className="mt-2 text-gray-400 text-sm">
-            Format:
-            First Middle Last
-            Address
-            City State ZIP
-            SSN
-            TDA No.
-          </pre>
+          }}
+        >
+          <p className="text-gray-300 font-bold mb-2">Click here and paste (Ctrl+V or Cmd+V)</p>
+          <p className="text-sm text-gray-400 mb-3">
+            Paste multiple entries at once - each entry should be 5 lines with a blank line between entries
+          </p>
+          <div className="text-xs text-gray-500 text-left mx-auto w-fit">
+            <p className="mb-2">Format for each entry:</p>
+            <div className="pl-4">
+              <p>First Middle Last</p>
+              <p>Address</p>
+              <p>City, State [ZIP]</p>
+              <p>SSN (last 4)</p>
+              <p>TDA No.</p>
+              <p className="mt-2">[blank line between entries]</p>
+            </div>
+          </div>
         </div>
         
         {successMessage && (
@@ -496,7 +578,7 @@ export default function EnterCaseTinForm() {
               <input
                 type="text"
                 placeholder="First Name"
-                required
+                required={formDataList.length === 0}
                 className={`${getInputClassName('firstName')} w-[200px]`}
                 value={currentForm.firstName}
                 onChange={e => setCurrentForm({...currentForm, firstName: e.target.value})}
@@ -522,7 +604,7 @@ export default function EnterCaseTinForm() {
               <input
                 type="text"
                 placeholder="Last Name"
-                required
+                required={formDataList.length === 0}
                 className={getInputClassName('lastName')}
                 value={currentForm.lastName}
                 onChange={e => setCurrentForm({...currentForm, lastName: e.target.value})}
@@ -538,7 +620,7 @@ export default function EnterCaseTinForm() {
             <input
               type="text"
               placeholder="Address"
-              required
+              required={formDataList.length === 0}
               className={getInputClassName('address', true)}
               value={currentForm.address}
               onChange={e => setCurrentForm({...currentForm, address: e.target.value})}
@@ -555,7 +637,7 @@ export default function EnterCaseTinForm() {
               <input
                 type="text"
                 placeholder="City"
-                required
+                required={formDataList.length === 0}
                 className={`${getInputClassName('city')} w-[280px]`}
                 value={currentForm.city}
                 onChange={e => setCurrentForm({...currentForm, city: e.target.value})}
@@ -569,7 +651,7 @@ export default function EnterCaseTinForm() {
               <input
                 type="text"
                 placeholder="State"
-                required
+                required={formDataList.length === 0}
                 maxLength={2}
                 className={`${getInputClassName('state')} w-[90px]`}
                 value={currentForm.state}
@@ -584,11 +666,17 @@ export default function EnterCaseTinForm() {
               <input
                 type="text"
                 placeholder="ZIP"
-                required
-                maxLength={5}
+                required={formDataList.length === 0}
+                maxLength={7}  // Allow for brackets
                 className={`${getInputClassName('zip')} w-[228px]`}
                 value={currentForm.zip}
-                onChange={e => setCurrentForm({...currentForm, zip: e.target.value.replace(/\D/g, '')})}
+                onChange={e => {
+                  const value = e.target.value;
+                  // Allow digits and square brackets
+                  if (/^[\d\[\]]*$/.test(value)) {
+                    setCurrentForm({...currentForm, zip: value});
+                  }
+                }}
               />
               {errors.zip && (
                 <div className="absolute text-xs text-red-500 mt-1">{errors.zip}</div>
@@ -601,7 +689,7 @@ export default function EnterCaseTinForm() {
             <input
               type="text"
               placeholder="Last 4 SSN"
-              required
+              required={formDataList.length === 0}
               maxLength={4}
               className={getInputClassName('ssn', true)}  // Added true for full width
               value={currentForm.ssn}
@@ -617,7 +705,7 @@ export default function EnterCaseTinForm() {
             <input
               type="text"
               placeholder="TDA No."
-              required
+              required={formDataList.length === 0}
               className={getInputClassName('tdaNo', true)}
               value={currentForm.tdaNo}
               onChange={e => setCurrentForm({...currentForm, tdaNo: e.target.value})}
@@ -651,6 +739,12 @@ export default function EnterCaseTinForm() {
           </div>
         </form>
         {showConfirmDialog && <ConfirmationDialog />}
+
+        {/* Add the ProcessingIndicator here */}
+        <ProcessingIndicator 
+          progress={progress} 
+          isProcessing={isProcessing} 
+        />
       </div>
     </div>
   );

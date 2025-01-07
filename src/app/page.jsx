@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import Modal from './components/Modal';
-import EnterCaseTinForm from './components/EnterCaseTinForm';
+import BermudaForm from './components/Bermuda';
+import HawaiiForm from './components/Hawaii';
 
 export default function Home() {
   const [showModal, setShowModal] = useState(false);
@@ -18,8 +19,22 @@ export default function Home() {
 
   const renderContent = () => {
     console.log('Current view:', currentView);
-    if (currentView === 'ENTER CASE TIN') {
-      return <EnterCaseTinForm />;
+    // { currentView === 'BERMUDA' && <BermudaForm /> }
+    // { currentView === 'HAWAII' && (
+    //   <p className="text-gray-400 font-[family-name:var(--font-geist-mono)]">
+    //     {currentView} Page Coming Soon
+    //   </p>
+    // ) }
+    // { currentView === '' && selectedSection && (
+    //   <p className="text-gray-400 font-[family-name:var(--font-geist-mono)]">
+    //     No Archive Data Exists For {selectedSection}
+    //   </p>
+    // )}
+    if (currentView === 'BERMUDA') {
+      return <BermudaForm />;
+    }
+    if (currentView === 'HAWAII') {
+      return <HawaiiForm />;
     }
     if (selectedSection) {
       return (
@@ -33,30 +48,30 @@ export default function Home() {
 
   return (
     <div className="h-[calc(100vh-60px)] m-[30px]">
-      <div className="h-full border-double border-4 p-8">
+      <div className="h-full border-double border-4 p-8 overflow-auto">
         <h1 className="text-2xl font-bold text-center text-gray-300 font-mono mb-8">
           ICS MAIN MENU
         </h1>
         
-        <div className="flex justify-between w-full mb-10">
-          <button 
+        <div className="flex justify-center w-full mb-10">
+          {/* <button 
             className="text-lg hover:underline"
             onClick={() => setSelectedSection('CASE ACTIONS')}
           >
-            <span className="text-gray-300 font-mono">CASE ACTIONS</span>
-          </button>
+            <span className="text-gray-300 font-mono"></span>
+          </button> */}
           <button 
-            className="text-lg hover:underline -ml-[50px]"
+            className="text-lg hover:underline"
             onClick={() => setShowModal(true)}
           >
             <span className="text-gray-300 font-mono">ADMIN ACTIONS</span>
           </button>
-          <button 
+          {/* <button 
             className="text-lg hover:underline"
             onClick={() => setSelectedSection('REPORTS')}
           >
-            <span className="text-gray-300 font-mono">REPORTS</span>
-          </button>
+            <span className="text-gray-300 font-mono"></span>
+          </button> */}
         </div>
 
         <div className="mt-10">

@@ -837,6 +837,7 @@ __metadata:
     eslint-config-next: 14.2.12
     geist: ^1.3.1
     jspdf: ^2.5.2
+    jspdf-autotable: ^3.8.4
     next: ^14.2.12
     postcss: ^8.4.49
     react: ^18
@@ -2614,6 +2615,15 @@ __metadata:
   bin:
     json5: lib/cli.js
   checksum: 866458a8c58a95a49bef3adba929c625e82532bcff1fe93f01d29cb02cac7c3fe1f4b79951b7792c2da9de0b32871a8401a6e3c5b36778ad852bf5b8a61165d7
+  languageName: node
+  linkType: hard
+
+"jspdf-autotable@npm:^3.8.4":
+  version: 3.8.4
+  resolution: "jspdf-autotable@npm:3.8.4"
+  peerDependencies:
+    jspdf: ^2.5.1
+  checksum: dfcc127f7e838da1487d4dddefb2b71c2d677017feb15bc526103321e98019fa105e1cb2c1d5eb02f1ede358787cc30ee614a25051626cef4ed0ba4d790f5d59
   languageName: node
   linkType: hard
 
