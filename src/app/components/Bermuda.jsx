@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import jsPDF from 'jspdf';
+import { Loader2 } from 'lucide-react';
+import html2canvas from 'html2canvas';
 
 const initialFormData = {
   firstName: '',
@@ -20,9 +22,9 @@ const initialErrors = {
   lastName: '',
   address: '',
   city: '',
+  state: '',
   zip: '',
   ssn: '',
-  state: '',
   tdaNo: ''
 };
 
@@ -79,6 +81,50 @@ const stateMapping = {
   'wyoming': 'WY'
 };
 
+const parseNameLine = (nameLine) => {
+  // Updated name patterns to handle more cases
+  const patterns = [
+    // Standard name with optional middle name
+    /^([A-Za-z]+)\s+(?:([A-Za-z.-]+)\s+)?([A-Za-z]+)$/,
+    
+    // Name with hyphen and/or apostrophe
+    /^([A-Za-z]+)\s+(?:([A-Za-z.-]+)\s+)?([A-Za-z'-]+(?:-[A-Za-z]+)?)$/,
+    
+    // Name with suffix (Jr., Sr., etc.)
+    /^([A-Za-z]+)\s+(?:([A-Za-z.-]+)\s+)?([A-Za-z'-]+)\s+(?:Jr\.|Sr\.|III|IV)$/,
+    
+    // Name with middle initial and possible suffix
+    /^([A-Za-z]+)\s+([A-Za-z]\.?)\s+([A-Za-z'-]+(?:\s+(?:Jr\.|Sr\.|III|IV))?)$/,
+    
+    // Complex middle names with hyphens
+    /^([A-Za-z]+)\s+([A-Za-z'-]+(?:-[A-Za-z]+)?)\s+([A-Za-z'-]+)$/
+  ];
+
+  for (const pattern of patterns) {
+    const match = nameLine.match(pattern);
+    if (match) {
+      const [_, firstName, middleName, lastName] = match;
+      return {
+        firstName: firstName,
+        middleName: middleName || '',
+        lastName: lastName
+      };
+    }
+  }
+
+  // If no patterns match, try splitting on spaces
+  const parts = nameLine.split(/\s+/);
+  if (parts.length >= 2) {
+    return {
+      firstName: parts[0],
+      middleName: parts.length > 2 ? parts.slice(1, -1).join(' ') : '',
+      lastName: parts[parts.length - 1]
+    };
+  }
+
+  throw new Error('Invalid name format');
+};
+
 export default function BermudaForm() {
   const [formDataList, setFormDataList] = useState([]);
   const [currentForm, setCurrentForm] = useState(initialFormData);
@@ -88,6 +134,12 @@ export default function BermudaForm() {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState({ current: 0, total: 0, errors: [] });
+  const [currentProcessingIndex, setCurrentProcessingIndex] = useState(0);
+  const [isProcessingBatch, setIsProcessingBatch] = useState(false);
+  const [processStage, setProcessStage] = useState('');
+  const [isPaused, setIsPaused] = useState(false);
+  const [shouldCancel, setShouldCancel] = useState(false);
+  const [saveDirectory, setSaveDirectory] = useState(null);
 
   const validateForm = () => {
     let isValid = true;
@@ -129,8 +181,13 @@ export default function BermudaForm() {
     //   newErrors.zip = 'ZIP must be 5 digits';
     //   isValid = false;
     // }
-    if (!/^\d{5}$|^\[\d{5}\]$/.test(currentForm.zip)) {
-      newErrors.zip = 'ZIP must be 5 digits or [12345]';
+    // if (!/^\d{5}$|^\[\d{5}\]$/.test(currentForm.zip)) {
+    //   newErrors.zip = 'ZIP must be 5 digits or [12345]';
+    //   isValid = false;
+    // }
+    // Updated ZIP validation to allow alphanumeric codes
+    if (!/^\d{5}$|^\[\d{5}\]$|^[A-Z0-9]{5,6}$|^\[[A-Z0-9]{5,6}\]$/.test(currentForm.zip)) {
+      newErrors.zip = 'ZIP must be 5 digits, [12345], or alphanumeric code';
       isValid = false;
     }
 
@@ -150,43 +207,173 @@ export default function BermudaForm() {
     return isValid;
   };
 
-  const generatePDF = (formData) => {
-    const doc = new jsPDF();
-    
-    // Add a title
-    doc.setFontSize(16);
-    doc.text('CASE TIN DATA', 105, 20, { align: 'center' });
-    
-    // Set font size for content
-    doc.setFontSize(12);
+  // Add these new functions
+  const captureElement = async (elementId, fullPage = true) => {
+    try {
+      const element = fullPage ? document.documentElement : document.getElementById(elementId);
+      if (!element) return null;
+      
+      // Calculate proper dimensions
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      const aspectRatio = viewportWidth / viewportHeight;
+      
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#1a1a1a',
+        width: viewportWidth,
+        height: viewportHeight,
+        windowWidth: viewportWidth,
+        windowHeight: viewportHeight,
+        x: window.scrollX,
+        y: window.scrollY,
+        preserveAspectRatio: true // Add this
+      });
+      
+      return canvas.toDataURL('image/png');
+    } catch (error) {
+      console.error('Capture error:', error);
+      return null;
+    }
+  };
 
-    console.log('PDF FORMDATA:', formData);
-    
-    // Add form data
-    const content = [
-      `Name: ${formData.firstName} ${formData.middleName ? formData.middleName + ' ' : ''}${formData.lastName}`,
-      `Address: ${formData.address}`,
-      `City/State/ZIP: ${formData.city}, ${formData.state} ${formData.zip}`,
-      `SSN: XXX-XX-${formData.ssn}`,
-      `TDA No.: ${formData.tdaNo}`
-    ];
-    
-    // Add each line of content
-    content.forEach((line, index) => {
-      doc.text(line, 20, 40 + (index * 10));
-    });
+  // Add this function to handle directory selection
+  // const selectSaveDirectory = async () => {
+  //   try {
+  //     const dirHandle = await window.showDirectoryPicker();
+  //     setSaveDirectory(dirHandle);
+  //     return true;
+  //   } catch (error) {
+  //     console.error('Error selecting directory:', error);
+  //     return false;
+  //   }
+  // };
 
-    // Add text in the middle of the page
-    doc.setFontSize(20);  // Make it bigger
-    doc.text('BOND', 105, 140, { align: 'center' });  // X: 105 (center), Y: 140 (middle)
-    
-    // Add timestamp
-    const timestamp = new Date().toLocaleString();
-    doc.setFontSize(10);
-    doc.text(`Generated: ${timestamp}`, 20, 280);
-    
-    // Save the PDF
-    doc.save(`case-tin-${formData.lastName}-${formData.firstName}.pdf`);
+  const generatePDF = async (formData) => {
+    try {
+      // Stage 1: Capture form entry (full page)
+      setProcessStage('Capturing form data...');
+      const formImage = await captureElement('root', true);
+      
+      // Stage 2: Capture confirmation
+      setProcessStage('Capturing confirmation...');
+      setShowConfirmDialog(true);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const confirmationImage = await captureElement('root', true);
+      setShowConfirmDialog(false);
+  
+      // Stage 3: Generate PDF
+      setProcessStage('Generating PDF...');
+      const doc = new jsPDF();
+      
+      // Calculate proper dimensions for PDF
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      
+      // Calculate dimensions maintaining browser window aspect ratio
+      const browserAspectRatio = window.innerWidth / window.innerHeight;
+      const maxImageWidth = pageWidth - 20; // 10px margin on each side
+      const maxImageHeight = pageHeight - 20; // 10px margin on each side
+      
+      // Calculate image dimensions that preserve aspect ratio
+      let imageWidth = maxImageWidth;
+      let imageHeight = imageWidth / browserAspectRatio;
+      
+      // If height is too tall, scale based on height instead
+      if (imageHeight > maxImageHeight) {
+        imageHeight = maxImageHeight;
+        imageWidth = imageHeight * browserAspectRatio;
+      }
+      
+      // Calculate centering offsets
+      const xOffset = (pageWidth - imageWidth) / 2;
+      const yOffset = (pageHeight - imageHeight) / 2;
+  
+      // First page: Form screenshot
+      if (formImage) {
+        doc.addImage(formImage, 'PNG', xOffset, yOffset, imageWidth, imageHeight);
+      }
+  
+      // Second page: Confirmation screenshot
+      if (confirmationImage) {
+        doc.addPage();
+        doc.addImage(confirmationImage, 'PNG', xOffset, yOffset, imageWidth, imageHeight);
+      }
+  
+      // Third page: Form data
+      doc.addPage();
+      doc.setFontSize(16);
+      doc.text('CASE TIN DATA', 105, 20, { align: 'center' });
+      
+      doc.setFontSize(12);
+      const content = [
+        `Name: ${formData.firstName} ${formData.middleName ? formData.middleName + ' ' : ''}${formData.lastName}`,
+        `Address: ${formData.address}`,
+        `City/State/ZIP: ${formData.city}, ${formData.state} ${formData.zip}`,
+        `SSN: XXX-XX-${formData.ssn}`,
+        `TDA No.: ${formData.tdaNo}`
+      ];
+      
+      content.forEach((line, index) => {
+        doc.text(line, 20, 40 + (index * 10));
+      });
+  
+      doc.setFontSize(20);
+      doc.text('BOND', 105, 140, { align: 'center' });
+      
+      const timestamp = new Date().toLocaleString();
+      doc.setFontSize(10);
+      doc.text(`Generated: ${timestamp}`, 20, 280);
+      
+      // Save the PDF
+      const filename = `case-tin-${formData.lastName}-${formData.firstName}.pdf`;
+      
+      if (saveDirectory) {
+        try {
+          const pdfBlob = doc.output('blob');
+          const fileHandle = await saveDirectory.getFileHandle(filename, { create: true });
+          const writable = await fileHandle.createWritable();
+          await writable.write(pdfBlob);
+          await writable.close();
+        } catch (error) {
+          console.error('Error saving to directory:', error);
+          const pdfBlob = doc.output('blob');
+          const url = URL.createObjectURL(pdfBlob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = filename;
+          link.click();
+          URL.revokeObjectURL(url);
+        }
+      } else {
+        const pdfBlob = doc.output('blob');
+        const url = URL.createObjectURL(pdfBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        link.click();
+        URL.revokeObjectURL(url);
+      }
+  
+      // After successful PDF generation and save, remove the processed form
+      setFormDataList(prevList => 
+        prevList.filter(form => 
+          !(form.firstName === formData.firstName && 
+            form.lastName === formData.lastName && 
+            form.ssn === formData.ssn)
+        )
+      );
+  
+      setProcessStage('Complete');
+      return true;
+  
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      setProcessStage('Error: ' + error.message);
+      return false;
+    }
   };
 
   const handleAddMore = () => {
@@ -219,29 +406,61 @@ export default function BermudaForm() {
     }
   };
 
+  // Modify handleConfirmSubmit to process one at a time
   const handleConfirmSubmit = async () => {
-    // Use only the forms in formDataList
-    const processBatch = async (forms, batchSize = 5) => {
-      for (let i = 0; i < forms.length; i += batchSize) {
-        const batch = forms.slice(i, i + batchSize);
-        
-        for (const formData of batch) {
-          generatePDF(formData);
-        }
-        
-        if (i + batchSize < forms.length) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-      }
-    };
-
-    await processBatch(formDataList);
-    
-    setSuccessMessage('Forms successfully created!');
-    setTimeout(() => setSuccessMessage(''), 3000);
-    setCurrentForm(initialFormData);
-    setFormDataList([]);
+    setIsProcessingBatch(true);
+    setCurrentProcessingIndex(0);
     setShowConfirmDialog(false);
+    setShouldCancel(false);
+    setIsPaused(false);
+    
+    try {
+      for (let i = 0; i < formDataList.length; i++) {
+        if (shouldCancel) {
+          setSuccessMessage('Processing cancelled');
+          return; // Immediate return when cancelled
+        }
+  
+        // Check for pause
+        while (isPaused && !shouldCancel) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+  
+        setCurrentProcessingIndex(i);
+        const formData = formDataList[i];
+        
+        setProgress({
+          current: i + 1,
+          total: formDataList.length,
+          errors: []
+        });
+  
+        const formElement = document.getElementById(`form-entry-${formData.lastName}-${formData.firstName}`);
+        formElement?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  
+        await new Promise(resolve => setTimeout(resolve, 500));
+        await generatePDF(formData);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+  
+      setSuccessMessage(shouldCancel ? 'Processing cancelled' : 'All forms successfully created!');
+      setTimeout(() => setSuccessMessage(''), 3000);
+      setCurrentForm(initialFormData);
+      
+      // Only clear the form list if not cancelled
+      if (!shouldCancel) {
+        setFormDataList([]);
+      }
+      
+    } catch (error) {
+      console.error('Error processing forms:', error);
+      setSuccessMessage(`Error processing forms: ${error.message}`);
+    } finally {
+      setIsProcessingBatch(false);
+      setCurrentProcessingIndex(-1);
+      setShouldCancel(false);
+      setIsPaused(false);
+    }
   };
 
   const handleRemoveForm = (index) => {
@@ -331,7 +550,7 @@ export default function BermudaForm() {
         // Small delay between batches to prevent UI freezing
         await new Promise(resolve => setTimeout(resolve, 100));
       }
-
+      
       // Add ALL successful entries to formDataList at once
       setFormDataList(prev => [...prev, ...processedEntries]);
       
@@ -356,137 +575,183 @@ export default function BermudaForm() {
 
   // Helper function to parse a single entry
   const parseEntry = async (lines) => {
-    const [nameLine, addressLine, locationLine, ssnLine, tdaLine] = lines;
-    
-    // Use our existing patterns
-    const standardNamePattern = /^([A-Za-z]+)(?:\s+([A-Za-z.]+))?\s+([A-Za-z]+)$/;
-    const specialNamePattern = /^([A-Za-z-]+(?:Ray:)?)\s+([A-Za-z]+)$/;
-    const cityStateZipPattern = /^(.*?),\s*((?:[A-Za-z]+\s+)*[A-Za-z]+)\s+(?:\[?(\d{5})\]?)$/;
-    
-    // Parse name
-    let firstName, middleName, lastName;
-    const standardMatch = nameLine.match(standardNamePattern);
-    if (standardMatch) {
-      [, firstName, middleName, lastName] = standardMatch;
-      middleName = middleName || '';
-    } else {
-      const specialMatch = nameLine.match(specialNamePattern);
-      if (specialMatch) {
-        const [, firstPart, last] = specialMatch;
-        if (firstPart.includes(':')) {
-          firstName = firstPart;
-          middleName = '';
-        } else {
-          firstName = firstPart;
-          middleName = '';
-        }
-        lastName = last;
-      } else {
-        throw new Error('Invalid name format');
+    // Handle entries with missing address
+    if (lines.length === 4) {
+      const [nameLine, addressLine, ssnLine, tdaLine] = lines;
+      if (addressLine === '[Address not provided]') {
+        const nameComponents = parseNameLine(nameLine);
+        return {
+          ...nameComponents,
+          address: addressLine,
+          city: '',
+          state: '',
+          zip: '',
+          ssn: ssnLine.trim(),
+          tdaNo: tdaLine.trim()
+        };
       }
     }
-
-    // Parse location
+  
+    const [nameLine, addressLine, locationLine, ssnLine, tdaLine] = lines;
+    
+    const nameComponents = parseNameLine(nameLine);
+    
+    // Updated pattern to handle alphanumeric postal codes
+    const cityStateZipPattern = /^(.*?),\s*((?:[A-Za-z]+\s+)*[A-Za-z]+)(?:,?\s+(\[?\d{5}\]?))?$/;
+    
     const locationMatch = locationLine.match(cityStateZipPattern);
     if (!locationMatch) {
       throw new Error('Invalid city/state/zip format');
     }
-
-    // Log the full match for debugging
-    console.log('Location match:', locationMatch);
     
-    // Now we'll get the ZIP in position 3 regardless of brackets
     const [_, city, state, zip] = locationMatch;
     
     return {
-      firstName,
-      middleName,
-      lastName,
+      ...nameComponents,
       address: addressLine.trim(),
       city: city.trim(),
       state: getStateAbbreviation(state.trim()),
-      zip: zip,
+      zip: zip || '',
       ssn: ssnLine.trim(),
       tdaNo: tdaLine.trim()
     };
   };
 
+  // Update ProcessingIndicator to show current person being processed
   const ProcessingIndicator = ({ progress, isProcessing }) => {
-    if (!isProcessing) return null;
+    if (!isProcessing && !isProcessingBatch) return null;
     
     const percent = Math.round((progress.current / progress.total) * 100);
+    const currentForm = formDataList[currentProcessingIndex];
     
     return (
       <div className="fixed bottom-4 right-4 bg-gray-800 p-4 rounded-lg shadow-lg w-80">
         <div className="flex justify-between text-white mb-2">
-          <span>Processing entries...</span>
+          <span>Processing forms...</span>
           <span>{percent}%</span>
         </div>
-        <div className="w-full h-2 bg-gray-700 rounded-full">
+        {currentForm && (
+          <>
+            <div className="text-gray-300 text-sm mb-2">
+              Currently processing: {currentForm.firstName} {currentForm.lastName}
+            </div>
+            <div className="text-blue-300 text-sm mb-2">
+              {processStage}
+            </div>
+          </>
+        )}
+        <div className="w-full h-2 bg-gray-700 rounded-full mb-3">
           <div 
             className="h-full bg-green-500 rounded-full transition-all duration-200"
             style={{ width: `${percent}%` }}
           />
         </div>
-        <div className="text-gray-300 text-sm mt-2">
-          {progress.current} of {progress.total} entries
+        <div className="text-gray-300 text-sm mb-3">
+          {progress.current} of {progress.total} forms
         </div>
-        {progress.errors.length > 0 && (
-          <div className="text-red-400 text-sm mt-1">
-            {progress.errors.length} errors found
+        
+        {/* Add control buttons */}
+        <div className="flex justify-between gap-2">
+          <button
+            onClick={() => setIsPaused(!isPaused)}
+            className={`flex-1 px-3 py-1 rounded font-mono text-sm ${
+              isPaused 
+                ? 'bg-green-600 hover:bg-green-700 text-white' 
+                : 'bg-yellow-600 hover:bg-yellow-700 text-white'
+            }`}
+          >
+            {isPaused ? 'Resume' : 'Pause'}
+          </button>
+          <button
+            onClick={() => {
+              if (confirm('Are you sure you want to cancel processing?')) {
+                setShouldCancel(true);
+                setIsPaused(false);
+              }
+            }}
+            className="flex-1 px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded font-mono text-sm"
+          >
+            Cancel
+          </button>
+        </div>
+        
+        {isPaused && (
+          <div className="text-yellow-400 text-sm mt-2 text-center">
+            Processing paused - Click Resume to continue
           </div>
         )}
       </div>
     );
   };
 
+  // Modify StoredFormsView to highlight current processing item
   const StoredFormsView = () => (
-    <div className="mt-4 mb-6 bg-gray-800 rounded-md p-4  w-full">
+    <div className="mt-4 mb-6 bg-gray-800 rounded-md p-4 w-full">
       <h3 className="text-white font-mono-bold mb-4">Stored Forms:</h3>
-      {formDataList.map((form, index) => (
-        <div key={index} className="mb-4 p-3 bg-gray-700 rounded-md relative">
-          <div className="text-white font-mono">
-            <p>{form.firstName} {form?.middleName} {form.lastName}</p>
-            <p className="text-sm text-gray-300">{form.address}</p>
-            <p className="text-sm text-gray-300">
-              {form.city}, {form.state} {form.zip}
-            </p>
-            <p className="text-sm text-gray-300">{form.ssn}</p>
-            <p className="text-sm text-gray-300">{form.tdaNo}</p>
-          </div>
-          <button
-            onClick={() => handleRemoveForm(index)}
-            className="absolute top-2 right-2 text-red-500 hover:text-red-700"
+      <div className="max-h-[300px] overflow-y-auto pr-2">
+        {formDataList.map((form, index) => (
+          <div 
+            key={index} 
+            id={`form-entry-${form.lastName}-${form.firstName}`}
+            className={`mb-4 p-3 rounded-md relative
+              ${currentProcessingIndex === index ? 'bg-gray-700' : 'bg-gray-700'}
+              transition-colors duration-200`}
           >
-            ✕
-          </button>
-        </div>
-      ))}
+            <div className="text-white font-mono">
+              <p>{form.firstName} {form?.middleName} {form.lastName}</p>
+              <p className="text-sm text-gray-300">{form.address}</p>
+              <p className="text-sm text-gray-300">
+                {form.city}, {form.state} {form.zip}
+              </p>
+              <p className="text-sm text-gray-300">{form.ssn}</p>
+              <p className="text-sm text-gray-300">{form.tdaNo}</p>
+            </div>
+            <button
+              onClick={() => handleRemoveForm(index)}
+              className="absolute top-2 right-2 text-red-500 hover:text-red-700"
+              disabled={isProcessingBatch}
+            >
+              ✕
+            </button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 
+  // Update ConfirmationDialog to show different messages for initial vs per-form confirmation
   const ConfirmationDialog = () => (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+    <div 
+      id="confirmation-dialog"
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
+    >
       <div className="bg-gray-700 rounded-lg p-6 max-w-md w-full mx-4">
-        <h3 className="text-white font-mono-bold mb-4">Confirm Submission</h3>
+        <h3 className="text-white font-mono-bold mb-4 flex items-center gap-2">
+          <Loader2 className="h-5 w-5 text-white" />
+          Processing...
+        </h3>
         <p className="text-gray-200 mb-4">
-          You are about to create {formDataList.length} form(s). 
-          This action cannot be undone.
+          {isProcessingBatch
+            ? 'Processing users data form confirmed! Generating PDF...'
+            : `You are about to create ${formDataList.length} form(s). This action cannot be undone.`
+          }
         </p>
-        <div className="flex justify-end space-x-2">
-          <button
-            onClick={() => setShowConfirmDialog(false)}
-            className="px-4 py-2 bg-gray-500 text-white rounded font-mono hover:bg-gray-600"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleConfirmSubmit}
-            className="px-4 py-2 bg-black text-white rounded font-mono hover:bg-green-600"
-          >
-            Confirm
-          </button>
-        </div>
+        {!isProcessingBatch && (
+          <div className="flex justify-end space-x-2">
+            <button
+              onClick={() => setShowConfirmDialog(false)}
+              className="px-4 py-2 bg-gray-500 text-white rounded font-mono hover:bg-gray-600"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleConfirmSubmit}
+              className="px-4 py-2 bg-black text-white rounded font-mono hover:bg-green-600"
+            >
+              Confirm
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -507,7 +772,7 @@ export default function BermudaForm() {
     <div className="max-w-2xl mx-auto overflow-visible">
       <div className="bg-gray-700 rounded-md shadow-lg p-6 h-full">
         <h2 className="text-xl font-mono-bold text-center text-white mb-6">
-          BERMUDA FORM
+          CASE TIN DATA FORM
         </h2>
         
         {/* Dedicated paste zone instructions */}
