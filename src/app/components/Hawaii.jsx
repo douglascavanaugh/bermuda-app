@@ -636,9 +636,130 @@ export default function HawaiiForm() {
     const doc = new jsPDF();
     console.log('PDF FORMDATA:', formData);
     
+    let yPosition = 20;
+    const lineHeight = 7;
+    const pageHeight = 280;
+    
+    // Helper function to add text and manage page breaks
+    const addText = (text, x = 20, fontSize = 10, isBold = false, maxWidth = 170) => {
+      if (yPosition > pageHeight) {
+        doc.addPage();
+        yPosition = 20;
+      }
+      
+      doc.setFontSize(fontSize);
+      if (isBold) {
+        doc.setFont(undefined, 'bold');
+      } else {
+        doc.setFont(undefined, 'normal');
+      }
+      
+      // Handle text wrapping for long text
+      if (text && text.length > 0) {
+        const lines = doc.splitTextToSize(text, maxWidth);
+        doc.text(lines, x, yPosition);
+        yPosition += lineHeight * lines.length;
+      } else {
+        yPosition += lineHeight;
+      }
+    };
+    
+    // Header
+    addText('HAWAII FORM - CONFIDENTIAL', 20, 16, true);
+    addText('Global Solutions Limited LLC', 20, 12, true);
+    addText('12221 Towne Lake Drive Ste A #164', 20, 10);
+    addText('Ft. Myers Florida [33913]', 20, 10);
+    addText('Tel: 239-234-1107', 20, 10);
+    yPosition += 5;
+    
+    // Subject Information
+    addText("SUBJECT'S INFORMATION", 20, 14, true);
+    addText(`Name: ${formData.firstName} ${formData.middleName} ${formData.lastName}`, 20);
+    addText(`Date of Birth: ${formData.dateOfBirth}`, 20);
+    addText(`Social Security Number: ${formData.socialInsuranceNumber}`, 20);
+    addText(`Address: ${formData.address}`, 20);
+    addText(`City, State ZIP: ${formData.city}, ${formData.state} ${formData.zip}`, 20);
+    addText(`Date Last at Address: ${formData.dateLastAtAddress}`, 20);
+    addText(`Primary Phone: ${formData.primaryPhoneNumber}`, 20);
+    addText(`Driver License: ${formData.driverLicenseNo}`, 20);
+    addText(`License Plate: ${formData.licensePlateNumbers}`, 20);
+    addText(`Vehicle Description: ${formData.vehicleDescription}`, 20);
+    yPosition += 5;
+    
+    // Employment Information
+    addText("EMPLOYMENT INFORMATION", 20, 14, true);
+    addText(`Last Employer: ${formData.lastEmployerName}`, 20);
+    addText(`Employer Address: ${formData.employerAddress}`, 20);
+    addText(`Employer City, State ZIP: ${formData.employerCity}, ${formData.employerState} ${formData.employerZip}`, 20);
+    addText(`Employer Phone: ${formData.lastEmployerPhone}`, 20);
+    addText(`Position: ${formData.positionAtLastEmployer}`, 20);
+    addText(`Trade/Profession: ${formData.tradeOrProfession}`, 20);
+    yPosition += 5;
+    
+    // Spouse Information
+    addText("SPOUSE INFORMATION", 20, 14, true);
+    addText(`Marital Status: ${formData.spouseMaritalStatus}`, 20);
+    addText(`Spouse Name: ${formData.spouseFirstName} ${formData.spouseMiddleName} ${formData.spouseLastName}`, 20);
+    addText(`Spouse DOB: ${formData.spouseDateOfBirth}`, 20);
+    addText(`Spouse SSN: ${formData.spouseSocialInsuranceNumber}`, 20);
+    addText(`Spouse Address Type: ${formData.spouseAddressType}`, 20);
+    addText(`Spouse Address: ${formData.spouseAddress}`, 20);
+    addText(`Spouse City, State ZIP: ${formData.spouseCity}, ${formData.spouseState} ${formData.spouseZip}`, 20);
+    addText(`Spouse Date Last at Address: ${formData.spouseDateLastAtAddress}`, 20);
+    addText(`Spouse Phone: ${formData.spousePrimaryPhone}`, 20);
+    addText(`Spouse Driver License: ${formData.spouseDriverLicense}`, 20);
+    addText(`Spouse License Plate: ${formData.spouseLicensePlate}`, 20);
+    yPosition += 5;
+    
+    // Spouse Employment
+    addText("SPOUSE EMPLOYMENT", 20, 14, true);
+    addText(`Spouse Last Employer: ${formData.spouseLastEmployerName}`, 20);
+    addText(`Spouse Employer Address: ${formData.spouseEmployerAddress}`, 20);
+    addText(`Spouse Employer City, State ZIP: ${formData.spouseEmployerCity}, ${formData.spouseEmployerState} ${formData.spouseEmployerZip}`, 20);
+    addText(`Spouse Employer Phone: ${formData.spouseLastEmployerPhone}`, 20);
+    addText(`Spouse Position: ${formData.spousePosition}`, 20);
+    addText(`Spouse Trade: ${formData.spouseTrade}`, 20);
+    yPosition += 5;
+    
+    // General Information
+    addText("GENERAL INFORMATION", 20, 14, true);
+    
+    // Friends/Relatives Info (can be very long)
+    if (formData.friendsRelativesInfo) {
+      addText("Friends/Relatives Info:", 20, 10, true);
+      addText(formData.friendsRelativesInfo, 25, 9, false, 165);
+      yPosition += 2; // Add some spacing
+    }
+    
+    // Business/Credit References (can be long)
+    if (formData.businessCreditRefs) {
+      addText("Business/Credit References:", 20, 10, true);
+      addText(formData.businessCreditRefs, 25, 9, false, 165);
+      yPosition += 2;
+    }
+    
+    addText(`Has Judgement: ${formData.hasJudgement ? 'Yes' : 'No'}`, 20);
+    if (formData.hasJudgement && formData.judgementDetails) {
+      addText("Judgement Details:", 20, 10, true);
+      addText(formData.judgementDetails, 25, 9, false, 165);
+      yPosition += 2;
+    }
+    
+    addText(`Has Consent: ${formData.hasConsent ? 'Yes' : 'No'}`, 20);
+    if (formData.hasConsent && formData.consentDetails) {
+      addText("Consent Details:", 20, 10, true);
+      addText(formData.consentDetails, 25, 9, false, 165);
+      yPosition += 2;
+    }
+    
+    // Trace Explanation (usually long)
+    if (formData.traceExplanation) {
+      addText("Trace Explanation:", 20, 10, true);
+      addText(formData.traceExplanation, 25, 9, false, 165);
+    }
     
     // Save the PDF
-    doc.save(`case-tin-${formData.lastName}-${formData.firstName}.pdf`);
+    doc.save(`hawaii-form-${formData.lastName}-${formData.firstName}.pdf`);
   };
 
   const handleAddMore = (e) => {
@@ -667,45 +788,26 @@ export default function HawaiiForm() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    try {
-      setIsSubmitting(true);
-      
-      // Determine what data to submit
-      const dataToSubmit = formDataList.length > 0 ? formDataList : [currentForm];
-      
-      console.log('Data to be submitted:', dataToSubmit);
-      
-      // Process each form in sequence
-      for (const formData of dataToSubmit) {
-        const response = await fetch('/api/generate-pdf', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(formData),
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(errorText || 'PDF generation failed');
-        }
-
-        const responseData = await response.json();
-        console.log('Generated PDF:', responseData.pdfPath);
-      }
-      
-      setSuccessMessage(`Successfully generated ${dataToSubmit.length} PDF(s)!`);
-      
-      // Clear the forms after successful submission
-      setFormDataList([]);
-      setCurrentForm(initialFormData);
-      
-    } catch (error) {
-      console.error('Error:', error);
-      setErrors({ submit: error.message });
-    } finally {
-      setIsSubmitting(false);
+    // If we have stored forms, show confirmation dialog
+    if (formDataList.length > 0) {
+      setShowConfirmDialog(true);
+      return;
     }
+    
+    // Validate current form if no stored forms
+    if (!validateForm()) {
+      const firstError = document.querySelector('.text-red-500');
+      if (firstError) {
+        firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      return;
+    }
+    
+    // Generate PDF for current form only
+    generatePDF(currentForm);
+    setSuccessMessage('PDF generated successfully!');
+    setTimeout(() => setSuccessMessage(''), 3000);
+    setCurrentForm(initialFormData);
   };
 
   const handleConfirmSubmit = async () => {
@@ -746,15 +848,143 @@ export default function HawaiiForm() {
     return stateMapping[normalizedState] || stateName;
   };
 
+  // Helper function to parse Hawaii simple line format (40-line format)
+  const parseHawaiiEntry = async (lines) => {
+    if (lines.length < 35) {
+      throw new Error('Simple line format requires at least 35 lines of data');
+    }
+
+    // Parse name from first line
+    const nameLine = lines[0];
+    const namePattern = /^([A-Za-z]+)(?:\s+([A-Za-z.]+))?\s+([A-Za-z]+)$/;
+    const nameMatch = nameLine.match(namePattern);
+    if (!nameMatch) {
+      throw new Error('Invalid name format');
+    }
+    const [, firstName, middleName = '', lastName] = nameMatch;
+
+    // Parse location from third line
+    const locationLine = lines[2];
+    const cityStateZipPattern = /^(.*?),\s*((?:[A-Za-z]+\s+)*[A-Za-z]+)\s+(\d{5}|\[\d{5}\])$/;
+    const locationMatch = locationLine.match(cityStateZipPattern);
+    if (!locationMatch) {
+      throw new Error('Invalid city/state/zip format');
+    }
+    const [, city, state, zip] = locationMatch;
+
+    // Helper function to parse city/state/zip from a line
+    const parseCityStateZip = (line) => {
+      if (!line) return { city: '', state: '', zip: '' };
+      const match = line.match(/^(.*?),\s*((?:[A-Za-z]+\s+)*[A-Za-z]+)\s+(\d{5}|\[\d{5}\])$/);
+      if (match) {
+        return {
+          city: match[1].trim(),
+          state: getStateAbbreviation(match[2].trim()),
+          zip: match[3].replace(/[\[\]]/g, '')
+        };
+      }
+      return { city: line.trim(), state: '', zip: '' };
+    };
+
+    // Parse spouse name from line 17
+    const spouseName = lines[17]?.trim() || '';
+    const spouseNameParts = spouseName.split(' ');
+    const spouseFirstName = spouseNameParts[0] || '';
+    const spouseLastName = spouseNameParts.length > 1 ? spouseNameParts[spouseNameParts.length - 1] : '';
+    const spouseMiddleName = spouseNameParts.length > 2 ? spouseNameParts.slice(1, -1).join(' ') : '';
+
+    // Parse employer city/state/zip
+    const employerLocation = parseCityStateZip(lines[9]);
+    const spouseEmployerLocation = parseCityStateZip(lines[27]);
+    const spouseLocation = parseCityStateZip(lines[22]);
+
+    return {
+      // Subject Information
+      firstName: firstName.trim(),
+      middleName: middleName.trim(),
+      lastName: lastName.trim(),
+      address: lines[1]?.trim() || '',
+      city: city.trim(),
+      state: getStateAbbreviation(state.trim()),
+      zip: zip.replace(/[\[\]]/g, ''),
+      dateOfBirth: lines[3]?.trim() || '',
+      socialInsuranceNumber: lines[4]?.trim() || '',
+      dateLastAtAddress: lines[5]?.trim() || '',
+      primaryPhoneNumber: lines[6]?.trim() || '',
+      
+      // Employment Information
+      lastEmployerName: lines[7]?.trim() || '',
+      employerAddress: lines[8]?.trim() || '',
+      employerCity: employerLocation.city,
+      employerState: employerLocation.state,
+      employerZip: employerLocation.zip,
+      lastEmployerPhone: lines[10]?.trim() || '',
+      positionAtLastEmployer: lines[11]?.trim() || '',
+      tradeOrProfession: lines[12]?.trim() || '',
+      
+      // Vehicle Information
+      driverLicenseNo: lines[13]?.trim() || '',
+      licensePlateNumbers: lines[14]?.trim() || '',
+      vehicleDescription: lines[15]?.trim() || '',
+      
+      // Spouse Information
+      spouseMaritalStatus: lines[16]?.trim() || '',
+      spouseFirstName: spouseFirstName,
+      spouseMiddleName: spouseMiddleName,
+      spouseLastName: spouseLastName,
+      spouseDateOfBirth: lines[18]?.trim() || '',
+      spouseSocialInsuranceNumber: lines[19]?.trim() || '',
+      spouseAddressType: lines[20]?.trim() || '',
+      spouseAddress: lines[21]?.trim() || '',
+      spouseCity: spouseLocation.city,
+      spouseState: spouseLocation.state,
+      spouseZip: spouseLocation.zip,
+      spouseDateLastAtAddress: lines[23]?.trim() || '',
+      spousePrimaryPhone: lines[24]?.trim() || '',
+      
+      // Spouse Employment
+      spouseLastEmployerName: lines[25]?.trim() || '',
+      spouseEmployerAddress: lines[26]?.trim() || '',
+      spouseEmployerCity: spouseEmployerLocation.city,
+      spouseEmployerState: spouseEmployerLocation.state,
+      spouseEmployerZip: spouseEmployerLocation.zip,
+      spouseLastEmployerPhone: lines[28]?.trim() || '',
+      spousePosition: lines[29]?.trim() || '',
+      spouseTrade: lines[30]?.trim() || '',
+      spouseDriverLicense: lines[31]?.trim() || '',
+      spouseLicensePlate: lines[32]?.trim() || '',
+      
+      // General Information
+      friendsRelativesInfo: lines[33]?.trim() || '',
+      businessCreditRefs: lines[34]?.trim() || '',
+      hasJudgement: lines[35]?.toLowerCase().includes('yes') || false,
+      judgementDetails: lines[36]?.trim() || '',
+      hasConsent: lines[37]?.toLowerCase().includes('yes') || false,
+      consentDetails: lines[38]?.trim() || '',
+      traceExplanation: lines[39]?.trim() || ''
+    };
+  };
+
   const handlePaste = async (e) => {
     e.preventDefault();
     const pastedText = e.clipboardData.getData('text');
     
     try {
-      // Split the CSV into rows
+      // Split into rows
       const rows = pastedText.split(/\r?\n/).filter(row => row.trim());
       
-      // Verify we have at least headers and one data row
+      // Detect format: Simple line format (35+ lines, no commas in first line) vs CSV format
+      if (rows.length >= 35 && !rows[0].includes(',')) {
+        // Simple line format - parse as individual entry
+        console.log('Detected simple line format with', rows.length, 'lines');
+        const parsedEntry = await parseHawaiiEntry(rows);
+        setFormDataList(prev => [...prev, parsedEntry]);
+        setSuccessMessage('Successfully pasted 1 entry from simple line format');
+        setTimeout(() => setSuccessMessage(''), 3000);
+        return;
+      }
+      
+      // CSV format processing
       if (rows.length < 2) {
         throw new Error('Pasted data must include headers and at least one data row');
       }
@@ -762,11 +992,13 @@ export default function HawaiiForm() {
       // Parse headers
       const headers = rows[0].split(',').map(header => header.trim());
       
-      // Validate headers
-      const invalidHeaders = headers.filter(header => !headerMap[header]);
-      if (invalidHeaders.length > 0) {
-        throw new Error(`Invalid headers found: ${invalidHeaders.join(', ')}`);
+      // Filter out empty headers and check for at least some valid headers
+      const validHeaders = headers.filter(header => header && headerMap[header]);
+      if (validHeaders.length === 0) {
+        throw new Error('No valid headers found. Please check your CSV format.');
       }
+      
+      console.log(`Found ${validHeaders.length} valid headers out of ${headers.length} total headers`);
 
       // Process data rows
       const entries = rows.slice(1).map((row, rowIndex) => {
@@ -774,9 +1006,11 @@ export default function HawaiiForm() {
         const entry = { ...initialFormData }; // Changed from initialFormState to initialFormData
         const rowErrors = [];
 
-        // Rest of the processing remains the same...
+        // Process only valid headers
         headers.forEach((header, index) => {
           const fieldName = headerMap[header];
+          if (!fieldName) return; // Skip unknown headers
+          
           let value = values[index] || '';
 
           // Apply format validation if field has a type

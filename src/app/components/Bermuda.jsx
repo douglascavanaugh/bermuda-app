@@ -78,8 +78,38 @@ const stateMapping = {
   'washington': 'WA',
   'west virginia': 'WV',
   'wisconsin': 'WI',
-  'wyoming': 'WY'
+  'wyoming': 'WY',
+  // Canadian provinces
+  'alberta': 'AB',
+  'british columbia': 'BC',
+  'manitoba': 'MB',
+  'new brunswick': 'NB',
+  'newfoundland and labrador': 'NL',
+  'northwest territories': 'NT',
+  'nova scotia': 'NS',
+  'nunavut': 'NU',
+  'ontario': 'ON',
+  'prince edward island': 'PE',
+  'quebec': 'QC',
+  'saskatchewan': 'SK',
+  'yukon': 'YT',
+  // Common international regions
+  'england': 'ENG',
+  'scotland': 'SCO',
+  'wales': 'WAL',
+  'northern ireland': 'NIR',
+  'australia': 'AUS',
+  'new zealand': 'NZL'
 };
+
+// US state codes for postal code validation
+const US_STATE_CODES = [
+  'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
+  'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
+  'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
+  'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
+  'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY'
+];
 
 const parseNameLine = (nameLine) => {
   // Updated name patterns to handle more cases
@@ -170,9 +200,9 @@ export default function BermudaForm() {
       isValid = false;
     }
 
-    // State validation (2 letters)
-    if (!/^[A-Z]{2}$/.test(currentForm.state.toUpperCase())) {
-      newErrors.state = '2 letter state';
+    // State/Province validation (2-3 letters for international support)
+    if (!/^[A-Z]{2,3}$/.test(currentForm.state.toUpperCase())) {
+      newErrors.state = '2-3 letter state/province code';
       isValid = false;
     }
 
@@ -185,9 +215,9 @@ export default function BermudaForm() {
     //   newErrors.zip = 'ZIP must be 5 digits or [12345]';
     //   isValid = false;
     // }
-    // Updated ZIP validation to allow alphanumeric codes
-    if (!/^\d{5}$|^\[\d{5}\]$|^[A-Z0-9]{5,6}$|^\[[A-Z0-9]{5,6}\]$/.test(currentForm.zip)) {
-      newErrors.zip = 'ZIP must be 5 digits, [12345], or alphanumeric code';
+    // Updated ZIP validation to allow US ZIP+4 and international postal codes
+    if (!/^\d{5}$|^\[\d{5}\]$|^\d{5}-\d{4}$|^\[\d{5}-\d{4}\]$|^[A-Z0-9]{5,7}$|^\[[A-Z0-9]{5,7}\]$/.test(currentForm.zip)) {
+      newErrors.zip = 'ZIP must be 5 digits, ZIP+4 (US), alphanumeric postal code (International), or bracketed format';
       isValid = false;
     }
 
@@ -476,6 +506,24 @@ export default function BermudaForm() {
     return stateMapping[normalizedState] || stateName;
   };
 
+  // Add postal code validation function
+  const validatePostalCode = (postalCode, stateProvince) => {
+    if (!postalCode) return true; // Allow empty postal codes
+    
+    // Remove brackets if present for validation
+    const cleanCode = postalCode.replace(/[\[\]]/g, '');
+    
+    const isUSState = US_STATE_CODES.includes(stateProvince.toUpperCase());
+    
+    if (isUSState) {
+      // US ZIP code: 5 digits (12345) or ZIP+4 (12345-6789)
+      return /^\d{5}$/.test(cleanCode) || /^\d{5}-\d{4}$/.test(cleanCode);
+    } else {
+      // International postal code: allow alphanumeric, 5-7 characters
+      return /^[A-Z0-9]{5,7}$/i.test(cleanCode);
+    }
+  };
+
   const handlePaste = async (e) => {
     e.preventDefault();
     const pastedText = e.clipboardData.getData('text');
@@ -596,8 +644,8 @@ export default function BermudaForm() {
     
     const nameComponents = parseNameLine(nameLine);
     
-    // Updated pattern to handle alphanumeric postal codes
-    const cityStateZipPattern = /^(.*?),\s*((?:[A-Za-z]+\s+)*[A-Za-z]+)(?:,?\s+(\[?\d{5}\]?))?$/;
+    // Pattern to capture postal codes including ZIP+4 format
+    const cityStateZipPattern = /^(.*?),\s*((?:[A-Za-z]+\s+)*[A-Za-z]+)(?:,?\s+(\[?[A-Z0-9-]{5,10}\]?))?$/;
     
     const locationMatch = locationLine.match(cityStateZipPattern);
     if (!locationMatch) {
@@ -606,11 +654,20 @@ export default function BermudaForm() {
     
     const [_, city, state, zip] = locationMatch;
     
+    const stateAbbrev = getStateAbbreviation(state.trim());
+    
+    // Validate postal code based on state/province
+    if (zip && !validatePostalCode(zip, stateAbbrev)) {
+      const isUS = US_STATE_CODES.includes(stateAbbrev.toUpperCase());
+      const expectedFormat = isUS ? "5 digits or ZIP+4 (e.g., 12345, [12345], 12345-6789, [12345-6789])" : "alphanumeric code (e.g., V1V0B3, [V1V0B3])";
+      throw new Error(`Invalid postal code format for ${state.trim()}. Expected ${expectedFormat}, got: ${zip}`);
+    }
+    
     return {
       ...nameComponents,
       address: addressLine.trim(),
       city: city.trim(),
-      state: getStateAbbreviation(state.trim()),
+      state: stateAbbrev,
       zip: zip || '',
       ssn: ssnLine.trim(),
       tdaNo: tdaLine.trim()
