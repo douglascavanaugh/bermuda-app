@@ -1,58 +1,568 @@
 {
-  "formType": "sf24_23a_1",
-  "name": "SF24-23a-1 Manual Mapping",
-  "description": "Manually mapped field coordinates for SF24-23a-1",
+  "formType": "sf24_23a",
+  "name": "SF24-23a Manual Mapping",
+  "description": "Manually mapped field coordinates for SF24-23a",
   "version": "1.0",
   "hasFormFields": true,
-  "detectedFieldCount": 6,
+  "detectedFieldCount": 62,
   "fields": [
     {
-      "name": "principal",
+      "name": "principal_name_address",
       "x": 22,
-      "y": 705,
+      "y": 694,
       "width": 120,
       "height": 20,
-      "fontSize": 10
+      "fontSize": 10,
+      "page": 1
     },
     {
-      "name": "surety",
-      "x": 22,
-      "y": 618,
-      "width": 120,
-      "height": 20,
-      "fontSize": 10
-    },
-    {
-      "name": "state",
-      "x": 321,
+      "name": "state_of_incorporation",
+      "x": 318,
       "y": 653,
       "width": 120,
       "height": 20,
-      "fontSize": 10
+      "fontSize": 10,
+      "page": 1
     },
     {
-      "name": "biddate",
-      "x": 286,
-      "y": 537,
+      "name": "surety_name_address",
+      "x": 22,
+      "y": 613,
       "width": 120,
       "height": 20,
-      "fontSize": 10
+      "fontSize": 10,
+      "page": 1
     },
     {
-      "name": "invitationno",
-      "x": 372,
-      "y": 536,
+      "name": "org_individual",
+      "x": 321,
+      "y": 707,
       "width": 120,
       "height": 20,
-      "fontSize": 10
+      "fontSize": 10,
+      "page": 1
     },
     {
-      "name": "percentbid",
+      "name": "org_partnership",
+      "x": 392,
+      "y": 707,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 1
+    },
+    {
+      "name": "org_joint_venture",
+      "x": 476,
+      "y": 705,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 1
+    },
+    {
+      "name": "org_corporation",
+      "x": 320,
+      "y": 687,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 1
+    },
+    {
+      "name": "org_other",
+      "x": 403,
+      "y": 686,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 1
+    },
+    {
+      "name": "percent_of_bid_price",
       "x": 21,
+      "y": 502,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 1
+    },
+    {
+      "name": "amount_millions",
+      "x": 68,
+      "y": 504,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 1
+    },
+    {
+      "name": "amount_thousands",
+      "x": 120,
+      "y": 503,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 1
+    },
+    {
+      "name": "amount_hundreds",
+      "x": 191,
+      "y": 504,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 1
+    },
+    {
+      "name": "amount_cents",
+      "x": 248,
       "y": 501,
       "width": 120,
       "height": 20,
-      "fontSize": 10
+      "fontSize": 10,
+      "page": 1
+    },
+    {
+      "name": "bid_date",
+      "x": 284,
+      "y": 536,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 1
+    },
+    {
+      "name": "invitation_number",
+      "x": 372,
+      "y": 537,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 1
+    },
+    {
+      "name": "for_construction_supplies_services",
+      "x": 284,
+      "y": 500,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 1
+    },
+    {
+      "name": "principal_signature_1",
+      "x": 91,
+      "y": 653,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 2
+    },
+    {
+      "name": "principal_signature_2",
+      "x": 246,
+      "y": 654,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 2
+    },
+    {
+      "name": "principal_signature_3",
+      "x": 401,
+      "y": 654,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 2
+    },
+    {
+      "name": "principal_name_title_1",
+      "x": 91,
+      "y": 609,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 2
+    },
+    {
+      "name": "principal_name_title_2",
+      "x": 246,
+      "y": 608,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 2
+    },
+    {
+      "name": "principal_name_title_3",
+      "x": 399,
+      "y": 606,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 2
+    },
+    {
+      "name": "individual_surety_signature_1",
+      "x": 96,
+      "y": 561,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 2
+    },
+    {
+      "name": "individual_surety_signature_2",
+      "x": 343,
+      "y": 562,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 2
+    },
+    {
+      "name": "individual_surety_name_1",
+      "x": 97,
+      "y": 531,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 2
+    },
+    {
+      "name": "individual_surety_name_2",
+      "x": 343,
+      "y": 531,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 2
+    },
+    {
+      "name": "surety_a_name_address",
+      "x": 103,
+      "y": 493,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 2
+    },
+    {
+      "name": "surety_a_state_incorporation",
+      "x": 330,
+      "y": 474,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 2
+    },
+    {
+      "name": "surety_a_liability_limit",
+      "x": 451,
+      "y": 474,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 2
+    },
+    {
+      "name": "surety_a_name_title_1",
+      "x": 107,
+      "y": 408,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 2
+    },
+    {
+      "name": "surety_a_name_title_2",
+      "x": 336,
+      "y": 410,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 2
+    },
+    {
+      "name": "surety_b_name_address",
+      "x": 103,
+      "y": 386,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 2
+    },
+    {
+      "name": "surety_b_state_incorporation",
+      "x": 330,
+      "y": 368,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 2
+    },
+    {
+      "name": "surety_b_liability_limit",
+      "x": 450,
+      "y": 368,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 2
+    },
+    {
+      "name": "surety_b_name_title_1",
+      "x": 109,
+      "y": 305,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 2
+    },
+    {
+      "name": "surety_b_name_title_2",
+      "x": 339,
+      "y": 305,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 2
+    },
+    {
+      "name": "surety_c_name_address",
+      "x": 105,
+      "y": 278,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 2
+    },
+    {
+      "name": "surety_c_state_incorporation",
+      "x": 331,
+      "y": 263,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 2
+    },
+    {
+      "name": "surety_c_liability_limit",
+      "x": 452,
+      "y": 262,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 2
+    },
+    {
+      "name": "surety_c_name_title_1",
+      "x": 110,
+      "y": 200,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 2
+    },
+    {
+      "name": "surety_c_name_title_2",
+      "x": 340,
+      "y": 198,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 2
+    },
+    {
+      "name": "surety_d_name_address",
+      "x": 103,
+      "y": 156,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 2
+    },
+    {
+      "name": "surety_d_state_incorporation",
+      "x": 330,
+      "y": 155,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 2
+    },
+    {
+      "name": "surety_d_liability_limit",
+      "x": 451,
+      "y": 154,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 2
+    },
+    {
+      "name": "surety_d_name_title_1",
+      "x": 113,
+      "y": 92,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 2
+    },
+    {
+      "name": "surety_d_name_title_2",
+      "x": 337,
+      "y": 94,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 2
+    },
+    {
+      "name": "surety_e_name_address",
+      "x": 105,
+      "y": 732,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 3
+    },
+    {
+      "name": "surety_e_state_incorporation",
+      "x": 331,
+      "y": 723,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 3
+    },
+    {
+      "name": "surety_e_liability_limit",
+      "x": 450,
+      "y": 722,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 3
+    },
+    {
+      "name": "surety_e_name_title_1",
+      "x": 110,
+      "y": 658,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 3
+    },
+    {
+      "name": "surety_e_name_title_2",
+      "x": 338,
+      "y": 658,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 3
+    },
+    {
+      "name": "surety_f_name_address",
+      "x": 104,
+      "y": 631,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 3
+    },
+    {
+      "name": "surety_f_state_incorporation",
+      "x": 329,
+      "y": 615,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 3
+    },
+    {
+      "name": "surety_f_liability_limit",
+      "x": 453,
+      "y": 616,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 3
+    },
+    {
+      "name": "surety_f_name_title_1",
+      "x": 110,
+      "y": 547,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 3
+    },
+    {
+      "name": "surety_f_name_title_2",
+      "x": 341,
+      "y": 551,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 3
+    },
+    {
+      "name": "surety_g_name_address",
+      "x": 105,
+      "y": 525,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 3
+    },
+    {
+      "name": "surety_g_state_incorporation",
+      "x": 332,
+      "y": 507,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 3
+    },
+    {
+      "name": "surety_g_liability_limit",
+      "x": 452,
+      "y": 506,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 3
+    },
+    {
+      "name": "surety_g_name_title_1",
+      "x": 106,
+      "y": 440,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 3
+    },
+    {
+      "name": "surety_g_name_title_2",
+      "x": 338,
+      "y": 439,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 3
+    },
+    {
+      "name": "maximum_dollar_limitation",
+      "x": 44,
+      "y": 194,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 3
     }
   ]
 }
