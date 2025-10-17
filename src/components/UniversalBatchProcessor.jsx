@@ -346,116 +346,48 @@ function UniversalBatchProcessor() {
     return null;
   };
 
-  // Generate PDF for single entry using template overlay
+  // Generate PDF for single entry using Python API (PERFECT SOLUTION!)
   const generatePDFForEntry = async (entry, template, templateSchema = null) => {
     try {
-      let pdfDoc;
-      let page;
+      console.log('🐍 Generating PDF via Python API:', entry);
+      console.log('📋 Template:', template.id);
       
-      // Load schema if not provided
-      if (!templateSchema && template.id) {
-        templateSchema = await loadTemplateSchema(template.id);
+      // Call the Python API for perfect PDF generation
+      const response = await fetch('https://bermuda-app.onrender.com/api/process-gsa-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          form_data: entry,
+          template_type: template.id
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Python API error: ${response.status} ${errorText}`);
       }
 
-      // Load the ACTUAL GSA PDF as base
-      console.log('📄 Loading actual GSA PDF:', template.id);
-      try {
-        // Convert template ID to match actual filename (sf24_23a -> sf24-23a)
-        const filename = template.id.replace('_', '-');
-        const pdfUrl = `/docs/sample-pdfs/${filename}.pdf`;
-        console.log('🔗 Fetching PDF from:', pdfUrl);
-        const pdfResponse = await fetch(pdfUrl);
-        console.log('📡 PDF Response status:', pdfResponse.status, pdfResponse.statusText);
-        
-        if (pdfResponse.ok) {
-          const pdfBytes = await pdfResponse.arrayBuffer();
-          console.log('📦 PDF bytes loaded:', pdfBytes.byteLength, 'bytes');
-          pdfDoc = await PDFDocument.load(pdfBytes);
-          const pages = pdfDoc.getPages();
-          console.log('📄 PDF loaded with', pages.length, 'pages');
-          page = pages[0]; // Get first page
-          console.log('✅ Loaded actual GSA PDF successfully');
-        } else {
-          throw new Error(`HTTP ${pdfResponse.status}: ${pdfResponse.statusText}`);
-        }
-      } catch (error) {
-        console.error('❌ Could not load actual PDF:', error);
-        console.log('🔄 Creating blank page as fallback');
-        // Fallback to blank page
-        pdfDoc = await PDFDocument.create();
-        page = pdfDoc.addPage([612, 792]);
-        
-        // Add some text to show it's a fallback
-        page.drawText('FALLBACK: Could not load GSA PDF', {
-          x: 50,
-          y: 750,
-          size: 12,
-          color: rgb(1, 0, 0),
-        });
-      }
-
-      // Now overlay data using your hand-mapped coordinates
-      if (templateSchema && templateSchema.fields) {
-        console.log('🎯 Overlaying data using manual schema with', templateSchema.fields.length, 'fields');
-        console.log('📊 Entry data keys:', Object.keys(entry));
-        console.log('📊 Entry data values:', entry);
-        console.log('📋 Schema field names:', templateSchema.fields.map(f => f.name));
-        
-        let fieldsWithData = 0;
-        templateSchema.fields.forEach((field, index) => {
-          const fieldValue = entry[field.name] || '';
-          console.log(`🔍 Field ${index + 1}: "${field.name}" = "${fieldValue}" (${fieldValue ? 'HAS VALUE' : 'EMPTY'})`);
-          
-          if (fieldValue) {
-            fieldsWithData++;
-            console.log(`📍 Placing "${field.name}": "${fieldValue}" at (${field.x}, ${field.y})`);
-            page.drawText(String(fieldValue), {
-              x: field.x,
-              y: field.y,
-              size: field.fontSize || 10,
-              color: rgb(0, 0, 0), // Black text
-            });
-          }
-        });
-        
-        console.log(`📈 Total fields with data: ${fieldsWithData}/${templateSchema.fields.length}`);
-        
-        // Also add a test marker to make sure overlay is working
-        page.drawText('OVERLAY TEST - SUCCESS', {
-          x: 50,
-          y: 50,
-          size: 10,
-          color: rgb(0, 1, 0), // Green text
-        });
-        
-      } else {
-        console.warn('⚠️ No template schema available - cannot overlay data');
-        console.log('📋 Template:', template);
-        console.log('📄 Schema:', templateSchema);
-        
-        // Add error message to PDF
-        page.drawText('ERROR: NO SCHEMA LOADED', {
-          x: 50,
-          y: 700,
-          size: 12,
-          color: rgb(1, 0, 0), // Red text
-        });
-      }
-
-      const pdfBytes = await pdfDoc.save();
+      const pdfBlob = await response.blob();
+      console.log('✅ PDF generated successfully via Python API:', pdfBlob.size, 'bytes');
+      
       return {
-        filename: `${template.formType.toLowerCase()}_entry_${entry.id}.pdf`,
-        bytes: pdfBytes,
-        success: true
+        success: true,
+        pdfBlob: pdfBlob,
+        filename: `${template.id}_entry_${Date.now()}.pdf`,
+        size: pdfBlob.size
       };
     } catch (error) {
+      console.error('❌ Python API error:', error);
       return {
-        filename: `${template.formType.toLowerCase()}_entry_${entry.id}.pdf`,
+        success: false,
         error: error.message,
-        success: false
+        filename: `${template.id}_entry_error.pdf`
       };
     }
   };
+
 
   // Process batch of entries
   const processBatch = async () => {
