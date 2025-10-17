@@ -8,6 +8,7 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.units import inch
 from PyPDF2 import PdfReader, PdfWriter
+import requests
 import tempfile
 import logging
 
@@ -113,35 +114,64 @@ def batch_process_gsa():
 
 def create_gsa_pdf_overlay(form_data, template_type):
     """
-    Create GSA PDF with perfect coordinate overlay
-    This is where the MAGIC happens!
+    Create GSA PDF with perfect coordinate overlay using ACTUAL GSA form
+    This is where the REAL MAGIC happens!
     """
-    buffer = io.BytesIO()
-    
-    # Create canvas with letter size (8.5 x 11 inches)
-    c = canvas.Canvas(buffer, pagesize=letter)
-    width, height = letter  # 612 x 792 points
-    
-    # GSA SF24-23A PERFECT COORDINATES (measured from actual form)
-    if template_type == 'sf24_23a':
-        # Draw the form background (we'll load the actual PDF later)
-        c.setFont("Helvetica", 10)
-        c.drawString(50, height - 50, "GSA FORM SF24-23A - BID BOND")
+    try:
+        # Load the actual GSA PDF from GitHub (since we can't access local files on Render)
+        gsa_pdf_url = "https://raw.githubusercontent.com/douglascavanaugh/bermuda-app/main/public/docs/sample-pdfs/SF24-23a.pdf"
         
-        # PERFECT COORDINATE MAPPING (these will be measured precisely)
+        logger.info(f"Loading GSA PDF from: {gsa_pdf_url}")
+        response = requests.get(gsa_pdf_url, timeout=30)
+        
+        if response.status_code == 200:
+            # Load the actual GSA PDF
+            gsa_pdf_buffer = io.BytesIO(response.content)
+            reader = PdfReader(gsa_pdf_buffer)
+            writer = PdfWriter()
+            
+            # Get the first page of the GSA form
+            page = reader.pages[0]
+            
+            # Create overlay with data
+            overlay_buffer = io.BytesIO()
+            c = canvas.Canvas(overlay_buffer, pagesize=letter)
+            width, height = letter  # 612 x 792 points
+            
+            logger.info(f"Creating overlay for template: {template_type}")
+        else:
+            logger.error(f"Failed to load GSA PDF: {response.status_code}")
+            # Fallback to blank page
+            overlay_buffer = io.BytesIO()
+            c = canvas.Canvas(overlay_buffer, pagesize=letter)
+            width, height = letter
+            c.setFont("Helvetica", 10)
+            c.drawString(50, height - 50, "FALLBACK: Could not load GSA PDF")
+    
+    except Exception as e:
+        logger.error(f"Error loading GSA PDF: {str(e)}")
+        # Fallback to blank page
+        overlay_buffer = io.BytesIO()
+        c = canvas.Canvas(overlay_buffer, pagesize=letter)
+        width, height = letter
+        c.setFont("Helvetica", 10)
+        c.drawString(50, height - 50, "ERROR: Could not load GSA PDF")
+    
+    # GSA SF24-23A COORDINATE MAPPING (using your working schema coordinates)
+    if template_type == 'sf24_23a':
         field_positions = {
-            'principal_name_address': (120, height - 150),
-            'state_of_incorporation': (450, height - 150),
-            'surety_name_address': (120, height - 200),
-            'org_corporation': (300, height - 250),  # Checkbox
-            'percent_of_bid_price': (120, height - 300),
-            'penal_sum_millions': (200, height - 350),
-            'penal_sum_thousands': (250, height - 350),
-            'penal_sum_hundreds': (300, height - 350),
-            'penal_sum_cents': (350, height - 350),
-            'bid_date': (120, height - 400),
-            'invitation_number': (250, height - 400),
-            'for_construction_of': (400, height - 400),
+            'principal_name_address': (125, height - 77),  # Adjusted for PDF coordinate system
+            'state_of_incorporation': (475, height - 77),
+            'surety_name_address': (125, height - 147),
+            'org_corporation': (300, height - 215),
+            'percent_of_bid_price': (125, height - 275),
+            'penal_sum_millions': (248, height - 305),
+            'penal_sum_thousands': (315, height - 305),
+            'penal_sum_hundreds': (382, height - 305),
+            'penal_sum_cents': (449, height - 305),
+            'bid_date': (125, height - 375),
+            'invitation_number': (235, height - 375),
+            'for_construction_of': (365, height - 375),
         }
         
         # Overlay data at perfect positions
@@ -168,9 +198,128 @@ def create_gsa_pdf_overlay(form_data, template_type):
         c.setFont("Helvetica", 6)
         c.drawString(50, 50, f"Processed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     
+    # Save the overlay
     c.save()
-    buffer.seek(0)
-    return buffer
+    overlay_buffer.seek(0)
+    
+    # If we loaded the GSA PDF successfully, merge overlay with it
+    try:
+        if 'reader' in locals() and 'writer' in locals():
+            # Create overlay PDF from canvas
+            overlay_pdf = PdfReader(overlay_buffer)
+            overlay_page = overlay_pdf.pages[0]
+            
+            # Merge overlay onto GSA form
+            page.merge_page(overlay_page)
+            writer.add_page(page)
+            
+            # Return the merged PDF
+            output_buffer = io.BytesIO()
+            writer.write(output_buffer)
+            output_buffer.seek(0)
+            return output_buffer
+        else:
+            # Return just the overlay (fallback)
+            return overlay_buffer
+    except Exception as e:
+        logger.error(f"Error merging PDFs: {str(e)}")
+        return overlay_buffer
+
+@app.route('/api/create-coordinate-mapper', methods=['GET'])
+def create_coordinate_mapper():
+    """
+    Create a coordinate mapping PDF with grid overlay
+    """
+    try:
+        # Load the GSA PDF
+        gsa_pdf_url = "https://raw.githubusercontent.com/douglascavanaugh/bermuda-app/main/public/docs/sample-pdfs/SF24-23a.pdf"
+        logger.info(f"Loading GSA PDF for coordinate mapping: {gsa_pdf_url}")
+        
+        response = requests.get(gsa_pdf_url, timeout=30)
+        
+        if response.status_code == 200:
+            # Load the GSA PDF
+            gsa_pdf_buffer = io.BytesIO(response.content)
+            reader = PdfReader(gsa_pdf_buffer)
+            writer = PdfWriter()
+            
+            # Get the first page
+            page = reader.pages[0]
+            
+            # Create coordinate grid overlay
+            overlay_buffer = io.BytesIO()
+            c = canvas.Canvas(overlay_buffer, pagesize=letter)
+            width, height = letter
+            
+            # Draw coordinate grid
+            c.setLineWidth(0.5)
+            c.setStrokeColorRGB(0, 0, 1)  # Blue
+            
+            # Vertical lines every 50 points
+            for x in range(0, int(width), 50):
+                c.line(x, 0, x, height)
+                c.setFont("Helvetica", 6)
+                c.drawString(x + 2, height - 10, str(x))
+            
+            # Horizontal lines every 50 points
+            for y in range(0, int(height), 50):
+                c.line(0, y, width, y)
+                c.setFont("Helvetica", 6)
+                c.drawString(5, y + 2, str(y))
+            
+            # Major grid lines every 100 points
+            c.setStrokeColorRGB(1, 0, 0)  # Red
+            c.setLineWidth(1)
+            for x in range(0, int(width), 100):
+                c.line(x, 0, x, height)
+            for y in range(0, int(height), 100):
+                c.line(0, y, width, y)
+            
+            # Add current field position markers
+            test_positions = [
+                (125, height - 77, "principal_name_address"),
+                (475, height - 77, "state_of_incorporation"), 
+                (125, height - 147, "surety_name_address"),
+                (300, height - 215, "org_corporation"),
+                (125, height - 275, "percent_of_bid_price"),
+                (125, height - 375, "bid_date"),
+                (235, height - 375, "invitation_number"),
+                (365, height - 375, "for_construction_of"),
+            ]
+            
+            c.setFillColorRGB(0, 1, 0)  # Green
+            c.setFont("Helvetica", 8)
+            for x, y, field_name in test_positions:
+                c.circle(x, y, 3, fill=1)
+                c.drawString(x + 5, y - 3, f"{field_name}")
+                c.drawString(x + 5, y - 15, f"({x},{int(height-y)})")
+            
+            c.save()
+            overlay_buffer.seek(0)
+            
+            # Merge overlay with GSA form
+            overlay_pdf = PdfReader(overlay_buffer)
+            overlay_page = overlay_pdf.pages[0]
+            page.merge_page(overlay_page)
+            writer.add_page(page)
+            
+            # Return the coordinate mapping PDF
+            output_buffer = io.BytesIO()
+            writer.write(output_buffer)
+            output_buffer.seek(0)
+            
+            return send_file(
+                output_buffer,
+                as_attachment=True,
+                download_name='gsa_coordinate_mapper.pdf',
+                mimetype='application/pdf'
+            )
+        else:
+            return jsonify({'error': f'Failed to load GSA PDF: {response.status_code}'}), 500
+            
+    except Exception as e:
+        logger.error(f"Error creating coordinate mapper: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/get-coordinates', methods=['POST'])
 def get_coordinates():
@@ -184,14 +333,14 @@ def get_coordinates():
         # Return our coordinate schema
         coordinates = {
             'sf24_23a': {
-                'principal_name_address': {'x': 120, 'y': 150, 'width': 300, 'height': 20},
-                'state_of_incorporation': {'x': 450, 'y': 150, 'width': 80, 'height': 20},
-                'surety_name_address': {'x': 120, 'y': 200, 'width': 300, 'height': 20},
-                'org_corporation': {'x': 300, 'y': 250, 'width': 15, 'height': 15},
-                'percent_of_bid_price': {'x': 120, 'y': 300, 'width': 100, 'height': 20},
-                'bid_date': {'x': 120, 'y': 400, 'width': 100, 'height': 20},
-                'invitation_number': {'x': 250, 'y': 400, 'width': 120, 'height': 20},
-                'for_construction_of': {'x': 400, 'y': 400, 'width': 150, 'height': 20},
+                'principal_name_address': {'x': 125, 'y': 77, 'width': 300, 'height': 20},
+                'state_of_incorporation': {'x': 475, 'y': 77, 'width': 80, 'height': 20},
+                'surety_name_address': {'x': 125, 'y': 147, 'width': 300, 'height': 20},
+                'org_corporation': {'x': 300, 'y': 215, 'width': 15, 'height': 15},
+                'percent_of_bid_price': {'x': 125, 'y': 275, 'width': 100, 'height': 20},
+                'bid_date': {'x': 125, 'y': 375, 'width': 100, 'height': 20},
+                'invitation_number': {'x': 235, 'y': 375, 'width': 120, 'height': 20},
+                'for_construction_of': {'x': 365, 'y': 375, 'width': 150, 'height': 20},
             }
         }
         
