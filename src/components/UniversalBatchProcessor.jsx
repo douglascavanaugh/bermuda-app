@@ -448,10 +448,10 @@ function UniversalBatchProcessor() {
     
     try {
       // Prepare PDFs for server
-      const pdfsToSave = successResults.map(result => ({
+      const pdfsToSave = await Promise.all(successResults.map(async (result) => ({
         filename: result.filename,
-        bytes: Array.from(result.bytes) // Convert Uint8Array to regular array for JSON
-      }));
+        bytes: Array.from(new Uint8Array(await result.pdfBlob.arrayBuffer())) // Convert blob to bytes array
+      })));
       
       const batchId = Date.now(); // Simple batch ID
       
@@ -489,7 +489,8 @@ function UniversalBatchProcessor() {
 
     successResults.forEach((result, index) => {
       setTimeout(() => {
-        const blob = new Blob([result.bytes], { type: 'application/pdf' });
+        // Use the pdfBlob directly from Python API response
+        const blob = result.pdfBlob;
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
