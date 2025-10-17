@@ -356,9 +356,9 @@ def create_gsa_pdf_overlay(form_data, template_type):
         
         # 🎯 SMART OFFSET CALIBRATION - Based on your feedback!
         # Left padding: +0.75" = +54 points (72 points per inch)
-        # Vertical offset: +100 points up
+        # Vertical offset: +50 points up (reduced from 100 - was too high)
         LEFT_OFFSET = 54   # 0.75 inches in points
-        VERTICAL_OFFSET = 100  # Move everything up 100 points
+        VERTICAL_OFFSET = 50  # Move everything up 50 points
         
         logger.info(f"🎯 Applying smart offsets: Left +{LEFT_OFFSET}pt, Up +{VERTICAL_OFFSET}pt")
         

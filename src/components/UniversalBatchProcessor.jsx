@@ -76,6 +76,29 @@ function UniversalBatchProcessor() {
     return availableTemplates.find(t => t.id === 'sf24_23a'); // Default to GSA
   };
 
+  // Parse CSV line properly handling quoted fields
+  const parseCSVLine = (line) => {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+    
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      
+      if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === ',' && !inQuotes) {
+        result.push(current.trim().replace(/^"|"$/g, '')); // Remove surrounding quotes
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    
+    result.push(current.trim().replace(/^"|"$/g, '')); // Add last field
+    return result;
+  };
+
   // Auto-detect data format (CSV vs Text)
   const detectDataFormat = (data) => {
     const lines = data.split(/\r?\n/).filter(line => line.trim());
@@ -121,7 +144,8 @@ function UniversalBatchProcessor() {
       
       if (lines.length < startIndex + 2) return [];
       
-      const headers = lines[startIndex].split(',').map(h => h.trim());
+      // Parse CSV headers properly handling quoted fields
+      const headers = parseCSVLine(lines[startIndex]);
       
       // Create field mapping for different form types (PERFECT WORKING SCHEMA MATCH)
       const fieldMapping = {
@@ -187,7 +211,7 @@ function UniversalBatchProcessor() {
       console.log('📋 Headers found:', headers);
       
       const entries = lines.slice(startIndex + 1).filter(line => line.trim()).map((line, index) => {
-        const values = line.split(',').map(v => v.trim());
+        const values = parseCSVLine(line);
         const entry = { id: index + 1 };
         
         headers.forEach((header, i) => {
