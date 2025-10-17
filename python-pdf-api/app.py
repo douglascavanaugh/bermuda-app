@@ -365,6 +365,11 @@ def create_gsa_pdf_overlay(form_data, template_type):
         
         logger.info(f"🎯 Applying smart offsets: Left +{LEFT_OFFSET}pt, Up +{VERTICAL_OFFSET}pt")
         
+        # CRITICAL DEBUG: Log the exact form_data we received
+        logger.info(f"🚨 CRITICAL DEBUG - Raw form_data keys: {list(form_data.keys())}")
+        logger.info(f"🚨 CRITICAL DEBUG - Raw form_data values: {form_data}")
+        logger.info(f"🚨 CRITICAL DEBUG - Detected PDF fields: {list(field_positions.keys())}")
+        
         # 🎯 SMART FIELD MAPPING - Map frontend names to detected PDF names
         field_name_mapping = {
             'principal_name_address': 'princple',  # Frontend → PDF field name
