@@ -208,8 +208,8 @@ def create_gsa_pdf_overlay(form_data, template_type):
     This is where the REAL MAGIC happens!
     """
     try:
-        # Load the actual GSA PDF from GitHub (since we can't access local files on Render)
-        gsa_pdf_url = "https://raw.githubusercontent.com/douglascavanaugh/bermuda-app/main/public/docs/sample-pdfs/SF24-23a.pdf"
+        # Load the actual GSA PDF from your Vercel deployment (preserves form fields!)
+        gsa_pdf_url = "https://bermuda-app.vercel.app/docs/sample-pdfs/SF24-23a.pdf"
         
         logger.info(f"Loading GSA PDF from: {gsa_pdf_url}")
         response = requests.get(gsa_pdf_url, timeout=30)
