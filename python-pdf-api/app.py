@@ -312,10 +312,16 @@ def create_gsa_pdf_overlay(form_data, template_type):
             reader = PdfReader(gsa_pdf_buffer)
             writer = PdfWriter()
             
-            # Get the first page of the GSA form
-            page = reader.pages[0]
+            # Process ALL pages of the GSA form (4 pages)
+            logger.info(f"📄 GSA PDF has {len(reader.pages)} pages - processing ALL pages")
             
-            # Create overlay with data
+            # Add all original pages to writer first
+            for page_num in range(len(reader.pages)):
+                page = reader.pages[page_num]
+                writer.add_page(page)
+                logger.info(f"📋 Added GSA page {page_num + 1}")
+            
+            # Create overlay with data for page 1 (index 0)
             overlay_buffer = io.BytesIO()
             c = canvas.Canvas(overlay_buffer, pagesize=letter)
             width, height = letter  # 612 x 792 points
@@ -382,7 +388,11 @@ def create_gsa_pdf_overlay(form_data, template_type):
         }
         
         logger.info(f"🎯 Field mapping: Frontend has {list(form_data.keys())}")
+        logger.info(f"🎯 Frontend data: {form_data}")
         logger.info(f"🎯 PDF detected: {list(field_positions.keys())}")
+        
+        # Count successful mappings
+        successful_mappings = 0
         
         # Overlay data at CALIBRATED positions
         c.setFont("Helvetica", 9)
@@ -412,6 +422,18 @@ def create_gsa_pdf_overlay(form_data, template_type):
                     else:
                         c.drawString(calibrated_x, calibrated_y, value)
                     logger.info(f"📝 Text {pdf_field_name}: '{value}'")
+                
+                successful_mappings += 1
+            else:
+                # Debug why mapping failed
+                if frontend_name not in form_data:
+                    logger.warning(f"⚠️ Frontend field '{frontend_name}' not in form_data")
+                elif not form_data[frontend_name]:
+                    logger.warning(f"⚠️ Frontend field '{frontend_name}' is empty: '{form_data[frontend_name]}'")
+                elif pdf_field_name not in field_positions:
+                    logger.warning(f"⚠️ PDF field '{pdf_field_name}' not detected in PDF")
+        
+        logger.info(f"✅ Successfully mapped {successful_mappings}/{len(field_name_mapping)} fields")
         
         # Add processing timestamp
         c.setFont("Helvetica", 6)
@@ -428,14 +450,16 @@ def create_gsa_pdf_overlay(form_data, template_type):
             overlay_pdf = PdfReader(overlay_buffer)
             overlay_page = overlay_pdf.pages[0]
             
-            # Merge overlay onto GSA form
-            page.merge_page(overlay_page)
-            writer.add_page(page)
+            # Merge overlay onto the FIRST page of GSA form (where the data goes)
+            first_page = writer.pages[0]  # Get the first page we already added
+            first_page.merge_page(overlay_page)
+            logger.info("✅ Merged data overlay onto GSA page 1")
             
-            # Return the merged PDF
+            # Return the complete PDF with all pages
             output_buffer = io.BytesIO()
             writer.write(output_buffer)
             output_buffer.seek(0)
+            logger.info(f"📄 Final PDF created with {len(writer.pages)} pages")
             return output_buffer
         else:
             # Return just the overlay (fallback)
