@@ -359,22 +359,49 @@ def create_gsa_pdf_overlay(form_data, template_type):
         
         logger.info(f"🎯 Applying smart offsets: Left +{LEFT_OFFSET}pt, Up +{VERTICAL_OFFSET}pt")
         
+        # 🎯 SMART FIELD MAPPING - Map frontend names to detected PDF names
+        field_name_mapping = {
+            'principal_name_address': 'princple',  # Frontend → PDF field name
+            'state_of_incorporation': 'STATE',
+            'surety_name_address': 'surety', 
+            'org_corporation': 'Corporation',
+            'org_partnership': 'Partnership',
+            'org_joint_venture': 'JointVenture',
+            'org_individual': 'Individual',
+            'percent_of_bid_price': 'PERCENTBID',
+            'bid_date': 'BIDDATE',
+            'invitation_number': 'INVITATIONNO',
+            'for_construction_of': 'FORCONSTRUCTION',
+            'penal_sum_thousands': 'THOUSANDS',
+            'penal_sum_hundreds': 'HUNDERDS',
+            'penal_sum_millions': 'MILLIONS',
+            'penal_sum_cents': 'CENTS',
+            'date_bond_executed': 'DATEBONDEX',
+            'specify_other': 'Specify',
+            'other_org_type': 'Other'
+        }
+        
+        logger.info(f"🎯 Field mapping: Frontend has {list(form_data.keys())}")
+        logger.info(f"🎯 PDF detected: {list(field_positions.keys())}")
+        
         # Overlay data at CALIBRATED positions
         c.setFont("Helvetica", 9)
-        for field_name, (x, y) in field_positions.items():
-            if field_name in form_data and form_data[field_name]:
-                value = str(form_data[field_name])
+        for frontend_name, pdf_field_name in field_name_mapping.items():
+            if frontend_name in form_data and form_data[frontend_name] and pdf_field_name in field_positions:
+                value = str(form_data[frontend_name])
+                x, y = field_positions[pdf_field_name]
                 
                 # Apply smart calibration offsets
                 calibrated_x = x + LEFT_OFFSET
                 calibrated_y = y + VERTICAL_OFFSET
                 
-                logger.info(f"📍 {field_name}: ({x}, {y}) → ({calibrated_x}, {calibrated_y})")
+                logger.info(f"📍 {frontend_name} → {pdf_field_name}: ({x}, {y}) → ({calibrated_x}, {calibrated_y}) = '{value}'")
                 
-                # Handle checkboxes
-                if field_name.startswith('org_'):
+                # Handle checkboxes (org_ fields)
+                if frontend_name.startswith('org_'):
                     if value.upper() in ['X', 'TRUE', '1', 'YES']:
                         c.drawString(calibrated_x, calibrated_y, "X")
+                        logger.info(f"✅ Checkbox {pdf_field_name}: X")
                 else:
                     # Handle text fields with wrapping
                     if len(value) > 40:
@@ -384,6 +411,7 @@ def create_gsa_pdf_overlay(form_data, template_type):
                             c.drawString(calibrated_x, calibrated_y - (i * 12), line)
                     else:
                         c.drawString(calibrated_x, calibrated_y, value)
+                    logger.info(f"📝 Text {pdf_field_name}: '{value}'")
         
         # Add processing timestamp
         c.setFont("Helvetica", 6)
