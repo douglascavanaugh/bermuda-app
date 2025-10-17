@@ -315,13 +315,10 @@ def create_gsa_pdf_overlay(form_data, template_type):
             # Process ALL pages of the GSA form (4 pages)
             logger.info(f"📄 GSA PDF has {len(reader.pages)} pages - processing ALL pages")
             
-            # Add all original pages to writer first
-            for page_num in range(len(reader.pages)):
-                page = reader.pages[page_num]
-                writer.add_page(page)
-                logger.info(f"📋 Added GSA page {page_num + 1}")
+            # Get the first page for overlay, but DON'T add pages yet
+            first_page = reader.pages[0]
             
-            # Create overlay with data for page 1 (index 0)
+            # Create overlay with data for page 1
             overlay_buffer = io.BytesIO()
             c = canvas.Canvas(overlay_buffer, pagesize=letter)
             width, height = letter  # 612 x 792 points
@@ -456,15 +453,24 @@ def create_gsa_pdf_overlay(form_data, template_type):
             overlay_page = overlay_pdf.pages[0]
             
             # Merge overlay onto the FIRST page of GSA form (where the data goes)
-            first_page = writer.pages[0]  # Get the first page we already added
             first_page.merge_page(overlay_page)
             logger.info("✅ Merged data overlay onto GSA page 1")
             
-            # Return the complete PDF with all pages
+            # NOW add all pages to writer in correct order
+            writer.add_page(first_page)  # Page 1 with overlay
+            logger.info("📋 Added GSA page 1 (with data overlay)")
+            
+            # Add remaining pages (2, 3, 4)
+            for page_num in range(1, len(reader.pages)):
+                page = reader.pages[page_num]
+                writer.add_page(page)
+                logger.info(f"📋 Added GSA page {page_num + 1}")
+            
+            # Return the complete PDF with all pages in correct order
             output_buffer = io.BytesIO()
             writer.write(output_buffer)
             output_buffer.seek(0)
-            logger.info(f"📄 Final PDF created with {len(writer.pages)} pages")
+            logger.info(f"📄 Final PDF created with {len(writer.pages)} pages in correct order")
             return output_buffer
         else:
             # Return just the overlay (fallback)
