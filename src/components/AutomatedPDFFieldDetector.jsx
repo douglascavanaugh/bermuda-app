@@ -12,16 +12,27 @@ function AutomatedPDFFieldDetector() {
   // Handle PDF file upload
   const handleFileUpload = async (event) => {
     const file = event.target.files[0];
-    if (!file || file.type !== 'application/pdf') {
-      setMessage('Please upload a PDF file');
+    console.log('📁 File selected:', file);
+    console.log('📋 File type:', file?.type);
+    
+    if (!file) {
+      setMessage('No file selected');
+      console.log('❌ No file selected');
+      return;
+    }
+    
+    if (file.type !== 'application/pdf') {
+      setMessage(`Please upload a PDF file. Selected: ${file.type}`);
+      console.log('❌ Wrong file type:', file.type);
       return;
     }
 
+    console.log('✅ Setting PDF file:', file.name);
     setPdfFile(file);
     setMessage(`PDF uploaded: ${file.name}. Click "Analyze PDF" to detect form fields.`);
   };
 
-  // Analyze PDF for form fields using multiple methods
+  // Analyze PDF for form fields using server-side API
   const analyzePDF = async () => {
     if (!pdfFile) {
       setMessage('Please upload a PDF file first');
@@ -32,18 +43,26 @@ function AutomatedPDFFieldDetector() {
     setMessage('🔍 Analyzing PDF for form fields...');
     
     try {
-      // Method 1: Try PDF.js form field extraction
-      const pdfJsFields = await extractFieldsWithPDFJS(pdfFile);
+      // Use server-side API to avoid webpack issues
+      const formData = new FormData();
+      formData.append('pdf', pdfFile);
       
-      if (pdfJsFields.length > 0) {
-        setDetectedFields(pdfJsFields);
-        setMessage(`✅ Found ${pdfJsFields.length} interactive form fields using PDF.js!`);
+      const response = await fetch('/api/analyze-pdf', {
+        method: 'POST',
+        body: formData
+      });
+      
+      const result = await response.json();
+      
+      if (result.success && result.fields.length > 0) {
+        setDetectedFields(result.fields);
+        setMessage(`✅ Found ${result.fieldsFound} form fields in ${result.numPages} pages using ${result.method}!`);
+      } else if (result.fields && result.fields.length > 0) {
+        // Fallback OCR results
+        setDetectedFields(result.fields);
+        setMessage(`🤖 PDF.js failed, using ${result.fields[0].method}. Found ${result.fields.length} potential fields.`);
       } else {
-        // Method 2: Fallback to OCR + Computer Vision
-        setMessage('📄 No interactive fields found. Trying OCR + layout analysis...');
-        const ocrFields = await extractFieldsWithOCR(pdfFile);
-        setDetectedFields(ocrFields);
-        setMessage(`🤖 Detected ${ocrFields.length} potential form fields using OCR analysis.`);
+        setMessage('❌ No form fields detected in this PDF. It may be a static/scanned document.');
       }
     } catch (error) {
       console.error('PDF analysis error:', error);
@@ -53,88 +72,7 @@ function AutomatedPDFFieldDetector() {
     }
   };
 
-  // Method 1: Extract form fields using PDF.js
-  const extractFieldsWithPDFJS = async (file) => {
-    return new Promise((resolve, reject) => {
-      const fileReader = new FileReader();
-      
-      fileReader.onload = async function() {
-        try {
-          // Dynamic import to avoid SSR issues
-          const pdfjsLib = await import('pdfjs-dist');
-          pdfjsLib.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
-          
-          const pdf = await pdfjsLib.getDocument(this.result).promise;
-          const fields = [];
-          
-          // Analyze each page
-          for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-            const page = await pdf.getPage(pageNum);
-            
-            // Get annotations (form fields)
-            const annotations = await page.getAnnotations();
-            
-            annotations.forEach((annotation, index) => {
-              if (annotation.subtype === 'Widget') {
-                // This is a form field
-                const rect = annotation.rect; // [x1, y1, x2, y2]
-                const fieldName = annotation.fieldName || `field_${pageNum}_${index}`;
-                
-                fields.push({
-                  name: fieldName,
-                  type: annotation.fieldType || 'text',
-                  page: pageNum,
-                  x: Math.round(rect[0]),
-                  y: Math.round(rect[1]),
-                  width: Math.round(rect[2] - rect[0]),
-                  height: Math.round(rect[3] - rect[1]),
-                  method: 'PDF.js',
-                  confidence: 1.0
-                });
-              }
-            });
-          }
-          
-          resolve(fields);
-        } catch (error) {
-          reject(error);
-        }
-      };
-      
-      fileReader.onerror = () => reject(new Error('Failed to read PDF file'));
-      fileReader.readAsArrayBuffer(file);
-    });
-  };
-
-  // Method 2: Extract fields using OCR + Computer Vision (placeholder)
-  const extractFieldsWithOCR = async (file) => {
-    // This would implement OCR-based field detection
-    // For now, return mock data to show the concept
-    return [
-      {
-        name: 'detected_field_1',
-        type: 'text',
-        page: 1,
-        x: 100,
-        y: 700,
-        width: 200,
-        height: 20,
-        method: 'OCR',
-        confidence: 0.85
-      },
-      {
-        name: 'detected_field_2',
-        type: 'text',
-        page: 1,
-        x: 100,
-        y: 650,
-        width: 200,
-        height: 20,
-        method: 'OCR',
-        confidence: 0.78
-      }
-    ];
-  };
+  // Server-side analysis handles all the PDF.js complexity
 
   // Export detected fields as JSON schema
   const exportSchema = () => {
@@ -219,7 +157,11 @@ function AutomatedPDFFieldDetector() {
             <h3 className="text-lg font-bold text-white mb-4">🔍 Analysis</h3>
             
             <button
-              onClick={analyzePDF}
+              onClick={() => {
+                console.log('🔘 Button clicked, pdfFile:', pdfFile);
+                console.log('🔘 isAnalyzing:', isAnalyzing);
+                analyzePDF();
+              }}
               disabled={!pdfFile || isAnalyzing}
               className={`w-full py-3 px-4 rounded-lg font-semibold transition-colors ${
                 !pdfFile || isAnalyzing
@@ -229,6 +171,11 @@ function AutomatedPDFFieldDetector() {
             >
               {isAnalyzing ? '🔄 Analyzing...' : '🤖 Analyze PDF'}
             </button>
+            
+            {/* Debug info */}
+            <div className="mt-2 text-xs text-gray-400">
+              Debug: pdfFile={pdfFile ? '✅' : '❌'} | isAnalyzing={isAnalyzing ? '✅' : '❌'}
+            </div>
             
             <div className="mt-4 text-sm text-gray-300">
               <p className="font-semibold mb-2">🎯 Detection Methods:</p>

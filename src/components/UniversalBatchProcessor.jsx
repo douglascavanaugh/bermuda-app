@@ -123,24 +123,44 @@ function UniversalBatchProcessor() {
       
       const headers = lines[startIndex].split(',').map(h => h.trim());
       
-      // Create field mapping for different form types
+      // Create field mapping for different form types (PERFECT WORKING SCHEMA MATCH)
       const fieldMapping = {
-        // SF24-23A Bid Bond form fields
-        'principal': 'principal',
-        'surety company': 'surety',
-        'suretycompany': 'surety',
-        'state': 'state',
-        'bid date': 'biddate',
-        'biddate': 'biddate',
-        'invitation no': 'invitationno',
-        'invitationno': 'invitationno',
-        'percent bid': 'percentbid',
-        'percentbid': 'percentbid',
+        // SF24-23A Bid Bond form fields (EXACT WORKING SCHEMA FIELD NAMES - NO MAPPING NEEDED!)
+        'principal_name_address': 'principal_name_address',
+        'state_of_incorporation': 'state_of_incorporation', 
+        'surety_name_address': 'surety_name_address',
+        'org_corporation': 'org_corporation',
+        'percent_of_bid_price': 'percent_of_bid_price',
+        'amount_millions': 'penal_sum_millions',
+        'amount_thousands': 'penal_sum_thousands', 
+        'amount_hundreds': 'penal_sum_hundreds',
+        'amount_cents': 'penal_sum_cents',
+        'bid_date': 'bid_date',
+        'invitation_number': 'invitation_number',
+        'for_construction_supplies_services': 'for_construction_of',
+        'principal_name_title_1': 'principal_name_title_1',
+        'surety_a_name_address': 'corporate_surety_name',
+        'surety_a_state_incorporation': 'corporate_surety_state',
+        'surety_a_liability_limit': 'liability_limit',
+        'surety_a_name_title_1': 'corporate_surety_name_title',
+        'maximum_dollar_limitation': 'liability_limit',
+        
+        // Legacy mappings for backward compatibility
+        'principal': 'principal_name',
+        'surety company': 'surety_name',
+        'suretycompany': 'surety_name',
+        'state': 'state_of_incorporation',
+        'bid date': 'bid_date',
+        'biddate': 'bid_date',
+        'invitation no': 'invitation_number',
+        'invitationno': 'invitation_number',
+        'percent bid': 'percent_of_bid_price',
+        'percentbid': 'percent_of_bid_price',
         'date bond expires': 'datebondex',
         'datebondexpires': 'datebondex',
         'datebondex': 'datebondex',
-        'project description': 'projectdescription',
-        'projectdescription': 'projectdescription',
+        'project description': 'for_construction_of',
+        'projectdescription': 'for_construction_of',
         
         // Legacy personnel form fields (fallback)
         'first name': 'firstname',
@@ -276,18 +296,34 @@ function UniversalBatchProcessor() {
 
   // Load JSON schema for template
   const loadTemplateSchema = async (templateId) => {
-    // Try manual schema first (hand-mapped coordinates)
-    const manualSchemas = [
-      `${templateId}_1_1_manual_schema.json`, // Latest with padding detection
-      `${templateId}_1_manual_schema.json`,   // Previous version
-      `${templateId}_manual_schema.json`,     // Generic manual
-      `${templateId}_schema.json`             // Auto-generated
+    // Check if smart calibrated schema is available
+    const smartCalibratedSchema = localStorage.getItem('smartCalibratedSchema');
+    const calibrationApplied = localStorage.getItem('calibrationApplied');
+    
+    if (smartCalibratedSchema && calibrationApplied === 'true') {
+      console.log('🤖 Using smart calibrated schema from localStorage');
+      const schema = JSON.parse(smartCalibratedSchema);
+      
+      // Clear the flag so it doesn't persist forever
+      localStorage.removeItem('calibrationApplied');
+      
+      return schema;
+    }
+    
+    // Try schemas in priority order (WORKING schemas get highest priority!)
+    const schemaFiles = [
+      `${templateId}_schema.json`,                    // WORKING detected (HIGHEST PRIORITY!)
+      `${templateId}_smart_calibrated_schema.json`,   // Smart calibrated
+      `${templateId}_1_1_manual_schema.json`,         // Latest manual with padding detection
+      `${templateId}_1_manual_schema.json`,           // Previous manual version
+      `${templateId}_manual_schema.json`,             // Generic manual
+      `${templateId}_auto_schema.json`                // Auto-generated fallback
     ];
     
     console.log('🔍 Looking for schemas for template:', templateId);
-    console.log('📂 Will try these files:', manualSchemas);
+    console.log('📂 Will try these files:', schemaFiles);
     
-    for (const schemaFile of manualSchemas) {
+    for (const schemaFile of schemaFiles) {
       try {
         const url = `/docs/pdf-templates/${schemaFile}`;
         console.log('🔗 Trying to fetch:', url);
