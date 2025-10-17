@@ -259,25 +259,39 @@ def create_gsa_pdf_overlay(form_data, template_type):
             dummy_buffer = io.BytesIO()
             field_positions = analyze_text_for_field_positions(None)
         
-        # Overlay data at perfect positions
+        # 🎯 SMART OFFSET CALIBRATION - Based on your feedback!
+        # Left padding: +0.75" = +54 points (72 points per inch)
+        # Vertical offset: +100 points up
+        LEFT_OFFSET = 54   # 0.75 inches in points
+        VERTICAL_OFFSET = 100  # Move everything up 100 points
+        
+        logger.info(f"🎯 Applying smart offsets: Left +{LEFT_OFFSET}pt, Up +{VERTICAL_OFFSET}pt")
+        
+        # Overlay data at CALIBRATED positions
         c.setFont("Helvetica", 9)
         for field_name, (x, y) in field_positions.items():
             if field_name in form_data and form_data[field_name]:
                 value = str(form_data[field_name])
                 
+                # Apply smart calibration offsets
+                calibrated_x = x + LEFT_OFFSET
+                calibrated_y = y + VERTICAL_OFFSET
+                
+                logger.info(f"📍 {field_name}: ({x}, {y}) → ({calibrated_x}, {calibrated_y})")
+                
                 # Handle checkboxes
                 if field_name.startswith('org_'):
                     if value.upper() in ['X', 'TRUE', '1', 'YES']:
-                        c.drawString(x, y, "X")
+                        c.drawString(calibrated_x, calibrated_y, "X")
                 else:
                     # Handle text fields with wrapping
                     if len(value) > 40:
                         # Split long text
                         lines = [value[i:i+40] for i in range(0, len(value), 40)]
                         for i, line in enumerate(lines[:3]):  # Max 3 lines
-                            c.drawString(x, y - (i * 12), line)
+                            c.drawString(calibrated_x, calibrated_y - (i * 12), line)
                     else:
-                        c.drawString(x, y, value)
+                        c.drawString(calibrated_x, calibrated_y, value)
         
         # Add processing timestamp
         c.setFont("Helvetica", 6)
