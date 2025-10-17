@@ -370,26 +370,26 @@ def create_gsa_pdf_overlay(form_data, template_type):
         logger.info(f"🚨 CRITICAL DEBUG - Raw form_data values: {form_data}")
         logger.info(f"🚨 CRITICAL DEBUG - Detected PDF fields: {list(field_positions.keys())}")
         
-        # 🎯 SMART FIELD MAPPING - Map frontend names to detected PDF names
+        # 🎯 SMART FIELD MAPPING - Map frontend names to FULL PDF field paths
         field_name_mapping = {
-            'principal_name_address': 'princple',  # Frontend → PDF field name
-            'state_of_incorporation': 'STATE',
-            'surety_name_address': 'surety', 
-            'org_corporation': 'Corporation',
-            'org_partnership': 'Partnership',
-            'org_joint_venture': 'JointVenture',
-            'org_individual': 'Individual',
-            'percent_of_bid_price': 'PERCENTBID',
-            'bid_date': 'BIDDATE',
-            'invitation_number': 'INVITATIONNO',
-            'for_construction_of': 'FORCONSTRUCTION',
-            'penal_sum_thousands': 'THOUSANDS',
-            'penal_sum_hundreds': 'HUNDERDS',
-            'penal_sum_millions': 'MILLIONS',
-            'penal_sum_cents': 'CENTS',
-            'date_bond_executed': 'DATEBONDEX',
-            'specify_other': 'Specify',
-            'other_org_type': 'Other'
+            'principal_name_address': 'form1[0].#subform[0].princple[0]',
+            'state_of_incorporation': 'form1[0].#subform[0].STATE[0]',
+            'surety_name_address': 'form1[0].#subform[0].surety[0]', 
+            'org_corporation': 'form1[0].#subform[0].Corporation[0]',
+            'org_partnership': 'form1[0].#subform[0].Partnership[0]',
+            'org_joint_venture': 'form1[0].#subform[0].JointVenture[0]',
+            'org_individual': 'form1[0].#subform[0].Individual[0]',
+            'percent_of_bid_price': 'form1[0].#subform[0].PERCENTBID[0]',
+            'bid_date': 'form1[0].#subform[0].BIDDATE[0]',
+            'invitation_number': 'form1[0].#subform[0].INVITATIONNO[0]',
+            'for_construction_of': 'form1[0].#subform[0].FORCONSTRUCTION[0]',
+            'penal_sum_thousands': 'form1[0].#subform[0].THOUSANDS[0]',
+            'penal_sum_hundreds': 'form1[0].#subform[0].HUNDERDS[0]',
+            'penal_sum_millions': 'form1[0].#subform[0].MILLIONS[0]',
+            'penal_sum_cents': 'form1[0].#subform[0].CENTS[0]',
+            'date_bond_executed': 'form1[0].#subform[0].DATEBONDEX[0]',
+            'specify_other': 'form1[0].#subform[0].Specify[0]',
+            'other_org_type': 'form1[0].#subform[0].Other[0]'
         }
         
         logger.info(f"🎯 Field mapping: Frontend has {list(form_data.keys())}")
