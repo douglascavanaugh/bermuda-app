@@ -1,0 +1,991 @@
+{
+  "formType": "SF24_23A",
+  "name": "SF24-23a",
+  "description": "Auto-generated schema for SF24-23a.pdf",
+  "version": "1.0",
+  "hasFormFields": true,
+  "detectedFieldCount": 97,
+  "fields": [
+    {
+      "name": "form1[0].#subform[0].DATEBONDEX[0]",
+      "type": "PDFTextField",
+      "x": 100,
+      "y": 700,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[0].princple[0]",
+      "type": "PDFTextField",
+      "x": 250,
+      "y": 700,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[0].STATE[0]",
+      "type": "PDFTextField",
+      "x": 400,
+      "y": 700,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[0].surety[0]",
+      "type": "PDFTextField",
+      "x": 100,
+      "y": 670,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[0].PERCENTBID[0]",
+      "type": "PDFTextField",
+      "x": 250,
+      "y": 670,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[0].THOUSANDS[0]",
+      "type": "PDFTextField",
+      "x": 400,
+      "y": 670,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[0].HUNDERDS[0]",
+      "type": "PDFTextField",
+      "x": 100,
+      "y": 640,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[0].BIDDATE[0]",
+      "type": "PDFTextField",
+      "x": 250,
+      "y": 640,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[0].INVITATIONNO[0]",
+      "type": "PDFTextField",
+      "x": 400,
+      "y": 640,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[0].FORCONSTRUCTION[0]",
+      "type": "PDFDropdown",
+      "x": 100,
+      "y": 610,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[0].MILLIONS[0]",
+      "type": "PDFTextField",
+      "x": 250,
+      "y": 610,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[0].CENTS[0]",
+      "type": "PDFTextField",
+      "x": 400,
+      "y": 610,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[0].Specify[0]",
+      "type": "PDFTextField",
+      "x": 100,
+      "y": 580,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[0].Other[0]",
+      "type": "PDFCheckBox",
+      "x": 250,
+      "y": 580,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[0].Individual[0]",
+      "type": "PDFCheckBox",
+      "x": 400,
+      "y": 580,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[0].Partnership[0]",
+      "type": "PDFCheckBox",
+      "x": 100,
+      "y": 550,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[0].JointVenture[0]",
+      "type": "PDFCheckBox",
+      "x": 250,
+      "y": 550,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[0].Corporation[0]",
+      "type": "PDFCheckBox",
+      "x": 400,
+      "y": 550,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].INDNAME2[0]",
+      "type": "PDFTextField",
+      "x": 100,
+      "y": 520,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].SignatureField1[0]",
+      "type": "PDFSignature",
+      "x": 250,
+      "y": 520,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].SignatureField1[1]",
+      "type": "PDFSignature",
+      "x": 400,
+      "y": 520,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].SignatureField1[2]",
+      "type": "PDFSignature",
+      "x": 100,
+      "y": 490,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].SignatureField1[3]",
+      "type": "PDFSignature",
+      "x": 250,
+      "y": 490,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].INDNAME1[0]",
+      "type": "PDFTextField",
+      "x": 400,
+      "y": 490,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].name_title1[0]",
+      "type": "PDFTextField",
+      "x": 100,
+      "y": 460,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].name_title2[0]",
+      "type": "PDFTextField",
+      "x": 250,
+      "y": 460,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].name_title3[0]",
+      "type": "PDFTextField",
+      "x": 400,
+      "y": 460,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].SignatureField1[4]",
+      "type": "PDFSignature",
+      "x": 100,
+      "y": 430,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].SignatureField1[5]",
+      "type": "PDFSignature",
+      "x": 250,
+      "y": 430,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].SignatureField1[6]",
+      "type": "PDFSignature",
+      "x": 400,
+      "y": 430,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].SignatureField1[7]",
+      "type": "PDFSignature",
+      "x": 100,
+      "y": 400,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].SignatureField1[8]",
+      "type": "PDFSignature",
+      "x": 250,
+      "y": 400,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].SignatureField1[9]",
+      "type": "PDFSignature",
+      "x": 400,
+      "y": 400,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].NAMETITLE2\\.3[0]",
+      "type": "PDFTextField",
+      "x": 100,
+      "y": 370,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].NAMETITLE2\\.3[1]",
+      "type": "PDFTextField",
+      "x": 250,
+      "y": 370,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].NAMETITLE2\\.3[2]",
+      "type": "PDFTextField",
+      "x": 400,
+      "y": 370,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].NAMETITLE2\\.3[3]",
+      "type": "PDFTextField",
+      "x": 100,
+      "y": 340,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].STATEINC[0]",
+      "type": "PDFTextField",
+      "x": 250,
+      "y": 340,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].LIABILITY1[0]",
+      "type": "PDFTextField",
+      "x": 400,
+      "y": 340,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].SignatureField1[10]",
+      "type": "PDFSignature",
+      "x": 100,
+      "y": 310,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].SignatureField1[11]",
+      "type": "PDFSignature",
+      "x": 250,
+      "y": 310,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].NAMETITLE1\\.3[0]",
+      "type": "PDFTextField",
+      "x": 400,
+      "y": 310,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].NAMETITLE1\\.3[1]",
+      "type": "PDFTextField",
+      "x": 100,
+      "y": 280,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].NAMETITLE1\\.3[2]",
+      "type": "PDFTextField",
+      "x": 250,
+      "y": 280,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].NAMETITLE1\\.3[3]",
+      "type": "PDFTextField",
+      "x": 400,
+      "y": 280,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].SignatureField1[12]",
+      "type": "PDFSignature",
+      "x": 100,
+      "y": 250,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].SignatureField1[13]",
+      "type": "PDFSignature",
+      "x": 250,
+      "y": 250,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].SignatureField1[14]",
+      "type": "PDFSignature",
+      "x": 400,
+      "y": 250,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].SignatureField1[15]",
+      "type": "PDFSignature",
+      "x": 100,
+      "y": 220,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].SignatureField1[16]",
+      "type": "PDFSignature",
+      "x": 250,
+      "y": 220,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].NAMETITLE3[0]",
+      "type": "PDFTextField",
+      "x": 400,
+      "y": 220,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].SignatureField1[17]",
+      "type": "PDFSignature",
+      "x": 100,
+      "y": 190,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].SignatureField1[18]",
+      "type": "PDFSignature",
+      "x": 250,
+      "y": 190,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].STATEINC[1]",
+      "type": "PDFTextField",
+      "x": 400,
+      "y": 190,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].LIABILITY1[1]",
+      "type": "PDFTextField",
+      "x": 100,
+      "y": 160,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].SignatureField1[19]",
+      "type": "PDFSignature",
+      "x": 250,
+      "y": 160,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].NAMETITLE3[1]",
+      "type": "PDFTextField",
+      "x": 400,
+      "y": 160,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].SignatureField1[20]",
+      "type": "PDFSignature",
+      "x": 100,
+      "y": 130,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].SignatureField1[21]",
+      "type": "PDFSignature",
+      "x": 250,
+      "y": 130,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].SignatureField1[22]",
+      "type": "PDFSignature",
+      "x": 400,
+      "y": 130,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].STATEINC[2]",
+      "type": "PDFTextField",
+      "x": 100,
+      "y": 100,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].LIABILITY1[2]",
+      "type": "PDFTextField",
+      "x": 250,
+      "y": 100,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].SignatureField1[23]",
+      "type": "PDFSignature",
+      "x": 400,
+      "y": 100,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].LIABILITY1[3]",
+      "type": "PDFTextField",
+      "x": 100,
+      "y": 70,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].STATEINC[3]",
+      "type": "PDFTextField",
+      "x": 250,
+      "y": 70,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].NAMETITLE3[2]",
+      "type": "PDFTextField",
+      "x": 400,
+      "y": 70,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].SignatureField1[24]",
+      "type": "PDFSignature",
+      "x": 100,
+      "y": 40,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].SignatureField1[25]",
+      "type": "PDFSignature",
+      "x": 250,
+      "y": 40,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[1].NAMETITLE3[3]",
+      "type": "PDFTextField",
+      "x": 400,
+      "y": 40,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[2].NAMETITLE1\\.3[4]",
+      "type": "PDFTextField",
+      "x": 100,
+      "y": 10,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[2].NAMETITLE1\\.3[5]",
+      "type": "PDFTextField",
+      "x": 250,
+      "y": 10,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[2].NAMETITLE1\\.3[6]",
+      "type": "PDFTextField",
+      "x": 400,
+      "y": 10,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[2].SignatureField1[26]",
+      "type": "PDFSignature",
+      "x": 100,
+      "y": -20,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[2].SignatureField1[27]",
+      "type": "PDFSignature",
+      "x": 250,
+      "y": -20,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[2].NAMETITLE3[4]",
+      "type": "PDFTextField",
+      "x": 400,
+      "y": -20,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[2].STATEINC[4]",
+      "type": "PDFTextField",
+      "x": 100,
+      "y": -50,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[2].SignatureField1[28]",
+      "type": "PDFSignature",
+      "x": 250,
+      "y": -50,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[2].NAMETITLE2\\.3[4]",
+      "type": "PDFTextField",
+      "x": 400,
+      "y": -50,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[2].NAMETITLE2\\.3[5]",
+      "type": "PDFTextField",
+      "x": 100,
+      "y": -80,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[2].NAMETITLE2\\.3[6]",
+      "type": "PDFTextField",
+      "x": 250,
+      "y": -80,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[2].SignatureField1[29]",
+      "type": "PDFSignature",
+      "x": 400,
+      "y": -80,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[2].LIABILITY1[4]",
+      "type": "PDFTextField",
+      "x": 100,
+      "y": -110,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[2].NAMETITLE3[5]",
+      "type": "PDFTextField",
+      "x": 250,
+      "y": -110,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[2].SignatureField1[30]",
+      "type": "PDFSignature",
+      "x": 400,
+      "y": -110,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[2].SignatureField1[31]",
+      "type": "PDFSignature",
+      "x": 100,
+      "y": -140,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[2].SignatureField1[32]",
+      "type": "PDFSignature",
+      "x": 250,
+      "y": -140,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[2].SignatureField1[33]",
+      "type": "PDFSignature",
+      "x": 400,
+      "y": -140,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[2].STATEINC[5]",
+      "type": "PDFTextField",
+      "x": 100,
+      "y": -170,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[2].LIABILITY1[5]",
+      "type": "PDFTextField",
+      "x": 250,
+      "y": -170,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[2].STATEINC[6]",
+      "type": "PDFTextField",
+      "x": 400,
+      "y": -170,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[2].LIABILITY1[6]",
+      "type": "PDFTextField",
+      "x": 100,
+      "y": -200,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[2].SignatureField1[34]",
+      "type": "PDFSignature",
+      "x": 250,
+      "y": -200,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[2].SignatureField1[35]",
+      "type": "PDFSignature",
+      "x": 400,
+      "y": -200,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[2].SignatureField1[36]",
+      "type": "PDFSignature",
+      "x": 100,
+      "y": -230,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[2].SignatureField1[37]",
+      "type": "PDFSignature",
+      "x": 250,
+      "y": -230,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[2].NAMETITLE3[6]",
+      "type": "PDFTextField",
+      "x": 400,
+      "y": -230,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "form1[0].#subform[2].exceedollas[0]",
+      "type": "PDFTextField",
+      "x": 100,
+      "y": -260,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    }
+  ],
+  "metadata": {
+    "created": "2025-10-16",
+    "author": "Bermuda App Auto-Scanner",
+    "pdfTemplate": "SF24-23a.pdf",
+    "fileSize": 720305,
+    "pageCount": 4,
+    "pageSize": {
+      "width": 612,
+      "height": 792
+    }
+  }
+}

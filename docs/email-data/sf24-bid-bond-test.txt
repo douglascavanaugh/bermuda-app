@@ -1,0 +1,46 @@
+FORM_TYPE: SF24_23A
+
+ABC Construction Inc
+Liberty Mutual Insurance
+CA
+10/15/2024
+IFB-2024-001
+10%
+04/15/2025
+Highway Bridge Construction
+
+XYZ Builders LLC
+Travelers Insurance
+TX
+10/16/2024
+IFB-2024-002
+5%
+05/20/2025
+Office Building Renovation
+
+Smith & Associates
+Hartford Insurance
+NY
+10/17/2024
+IFB-2024-003
+15%
+06/30/2025
+Water Treatment Plant
+
+Johnson Contractors
+Zurich Insurance
+FL
+10/18/2024
+IFB-2024-004
+8%
+07/15/2025
+School Gymnasium Construction
+
+Brown Engineering
+AIG Insurance
+WA
+10/19/2024
+IFB-2024-005
+12%
+08/10/2025
+Airport Terminal Expansion

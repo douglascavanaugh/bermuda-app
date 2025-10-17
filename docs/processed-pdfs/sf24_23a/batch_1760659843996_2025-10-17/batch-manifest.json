@@ -1,0 +1,21 @@
+{
+  "batchId": 1760659843996,
+  "formType": "SF24_23A",
+  "processedAt": "2025-10-17T00:10:44.137Z",
+  "totalFiles": 3,
+  "totalSize": 2760,
+  "files": [
+    {
+      "filename": "sf24_23a_entry_1.pdf",
+      "size": 920
+    },
+    {
+      "filename": "sf24_23a_entry_2.pdf",
+      "size": 920
+    },
+    {
+      "filename": "sf24_23a_entry_3.pdf",
+      "size": 920
+    }
+  ]
+}

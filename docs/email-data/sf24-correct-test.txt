@@ -1,0 +1,57 @@
+FORM_TYPE: SF24_23A
+Brown Engineering LLC, 123 Main St, Seattle WA 98101
+WA
+AIG Insurance Company, 456 Oak Ave, New York NY 10001
+X
+12%
+0
+500
+0
+0
+08/15/2025
+IFB-2024-001
+Construction
+John Smith, President
+AIG Insurance Company, 456 Oak Ave, New York NY 10001
+NY
+$50000000
+Sarah Johnson, Agent
+$50000000
+
+Smith Construction Inc, 789 Pine Rd, Portland OR 97201
+OR
+Liberty Mutual, 321 Elm St, Boston MA 02101
+X
+15%
+1
+250
+0
+0
+09/20/2025
+IFB-2024-002
+Supplies
+Mike Davis, CEO
+Liberty Mutual, 321 Elm St, Boston MA 02101
+MA
+$75000000
+Tom Wilson, Underwriter
+$75000000
+
+Johnson Builders Corp, 654 Cedar Ln, Denver CO 80201
+CO
+Travelers Insurance, 987 Maple Dr, Hartford CT 06101
+X
+18%
+0
+800
+50
+0
+10/10/2025
+IFB-2024-003
+Services
+Lisa Brown, Owner
+Travelers Insurance, 987 Maple Dr, Hartford CT 06101
+CT
+$100000000
+Amy Chen, Manager
+$100000000

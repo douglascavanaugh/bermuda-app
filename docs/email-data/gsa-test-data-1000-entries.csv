@@ -1,0 +1,50 @@
+FORM_TYPE: SF24_23A
+First Name,Last Name,Date of Birth,SSN,Address,City,State,ZIP,Phone,Email,Position,Department,Supervisor,Start Date,Security Clearance
+John,Smith,01/15/1980,123-45-6789,123 Main Street,Washington,DC,20001,(202) 555-0101,john.smith@gsa.gov,Program Analyst,General Services,Jane Wilson,03/15/2020,Secret
+Mary,Johnson,02/20/1975,234-56-7890,456 Oak Avenue,Arlington,VA,22201,(703) 555-0102,mary.johnson@gsa.gov,Contract Specialist,Procurement,Robert Davis,01/10/2019,Top Secret
+Robert,Williams,03/25/1982,345-67-8901,789 Pine Road,Alexandria,VA,22301,(703) 555-0103,robert.williams@gsa.gov,IT Specialist,Technology,Susan Miller,05/20/2021,Public Trust
+Jennifer,Brown,04/30/1978,456-78-9012,321 Elm Street,Bethesda,MD,20814,(301) 555-0104,jennifer.brown@gsa.gov,Financial Analyst,Finance,Michael Jones,07/12/2018,Secret
+Michael,Davis,05/18/1985,567-89-0123,654 Maple Drive,Rockville,MD,20850,(301) 555-0105,michael.davis@gsa.gov,Human Resources,Personnel,Lisa Garcia,09/08/2022,Public Trust
+Sarah,Miller,06/22/1979,678-90-1234,987 Cedar Lane,Silver Spring,MD,20901,(301) 555-0106,sarah.miller@gsa.gov,Legal Counsel,Legal,David Rodriguez,11/03/2017,Top Secret
+David,Wilson,07/14/1983,789-01-2345,147 Birch Court,Fairfax,VA,22030,(703) 555-0107,david.wilson@gsa.gov,Project Manager,Operations,Amanda Martinez,02/28/2020,Secret
+Lisa,Moore,08/11/1976,890-12-3456,258 Spruce Way,Vienna,VA,22180,(703) 555-0108,lisa.moore@gsa.gov,Budget Analyst,Finance,Christopher Lee,04/15/2019,Public Trust
+Christopher,Taylor,09/07/1981,901-23-4567,369 Willow Street,McLean,VA,22101,(703) 555-0109,christopher.taylor@gsa.gov,Security Officer,Security,Michelle Thompson,06/10/2021,Top Secret
+Amanda,Anderson,10/03/1984,012-34-5678,741 Poplar Avenue,Potomac,MD,20854,(301) 555-0110,amanda.anderson@gsa.gov,Communications,Public Affairs,James White,08/25/2018,Secret
+James,Thomas,11/28/1977,123-45-6790,852 Hickory Drive,Gaithersburg,MD,20878,(301) 555-0111,james.thomas@gsa.gov,Facilities Manager,Real Property,Karen Harris,10/12/2022,Public Trust
+Karen,Jackson,12/16/1980,234-56-7801,963 Ash Boulevard,Germantown,MD,20874,(301) 555-0112,karen.jackson@gsa.gov,Training Coordinator,Human Resources,Daniel Clark,12/07/2017,Secret
+Daniel,White,01/09/1986,345-67-8912,159 Walnut Place,Reston,VA,20190,(703) 555-0113,daniel.white@gsa.gov,Quality Assurance,Operations,Patricia Lewis,01/22/2020,Top Secret
+Patricia,Harris,02/05/1974,456-78-9023,357 Cherry Hill,Herndon,VA,20170,(703) 555-0114,patricia.harris@gsa.gov,Procurement Officer,Acquisition,Mark Robinson,03/18/2019,Secret
+Mark,Martin,03/12,1988,567-89-0134,468 Dogwood Trail,Ashburn,VA,20147,(703) 555-0115,mark.martin@gsa.gov,Data Analyst,Information Technology,Nancy Walker,05/30/2021,Public Trust
+Nancy,Thompson,04/19,1973,678-90-1245,579 Magnolia Street,Leesburg,VA,20175,(703) 555-0116,nancy.thompson@gsa.gov,Administrative Officer,Administration,Paul Young,07/14/2018,Secret
+Paul,Garcia,05/26,1987,789-01-2356,680 Sycamore Road,Sterling,VA,20164,(703) 555-0117,paul.garcia@gsa.gov,Environmental Specialist,Sustainability,Laura Allen,09/09,2022,Top Secret
+Laura,Martinez,06/13,1982,890-12-3467,791 Cottonwood Lane,Great Falls,VA,22066,(703) 555-0118,laura.martinez@gsa.gov,Policy Analyst,Policy Development,Steven King,11/26,2017,Secret
+Steven,Rodriguez,07/21,1979,901-23-4578,802 Redwood Circle,Falls Church,VA,22041,(703) 555-0119,steven.rodriguez@gsa.gov,Program Manager,Strategic Planning,Michelle Wright,01/08,2020,Public Trust
+Michelle,Lee,08/17,1985,012-34-5689,913 Oakwood Drive,Annandale,VA,22003,(703) 555-0120,michelle.lee@gsa.gov,Research Analyst,Research & Development,Kevin Lopez,03/23,2019,Top Secret
+Kevin,Lopez,09/04,1978,123-45-6701,024 Pinewood Avenue,Springfield,VA,22150,(703) 555-0121,kevin.lopez@gsa.gov,Systems Administrator,IT Operations,Deborah Hill,05/17,2021,Secret
+Deborah,Hill,10/30,1983,234-56-7812,135 Cedarwood Court,Burke,VA,22015,(703) 555-0122,deborah.hill@gsa.gov,Contract Administrator,Contracting,Ryan Green,07/02,2018,Public Trust
+Ryan,Green,11/15,1981,345-67-8923,246 Elmwood Place,Lorton,VA,22079,(703) 555-0123,ryan.green@gsa.gov,Financial Manager,Budget Office,Angela Adams,08/28,2022,Secret
+Angela,Adams,12/08,1976,456-78-9034,357 Maplewood Street,Woodbridge,VA,22191,(703) 555-0124,angela.adams@gsa.gov,Human Resources Specialist,Personnel,Timothy Baker,10/13,2017,Top Secret
+Timothy,Baker,01/24,1984,567-89-0145,468 Applewood Drive,Manassas,VA,20109,(703) 555-0125,timothy.baker@gsa.gov,Logistics Coordinator,Supply Chain,Sandra Gonzalez,12/19,2019,Secret
+Sandra,Gonzalez,02/11,1977,678-90-1256,579 Cherrywood Lane,Centreville,VA,20120,(703) 555-0126,sandra.gonzalez@gsa.gov,Public Affairs Officer,Communications,Joseph Nelson,02/04,2021,Public Trust
+Joseph,Nelson,03/29,1986,789-01-2367,680 Willowwood Road,Chantilly,VA,20151,(703) 555-0127,joseph.nelson@gsa.gov,Safety Officer,Occupational Safety,Kimberly Carter,04/20,2018,Secret
+Kimberly,Carter,04/06,1975,890-12-3478,791 Birchwood Circle,Fairfax Station,VA,22039,(703) 555-0128,kimberly.carter@gsa.gov,Training Manager,Professional Development,Brian Mitchell,06/15,2022,Top Secret
+Brian,Mitchell,05/23,1989,901-23-4589,802 Hickorywood Drive,Clifton,VA,20124,(703) 555-0129,brian.mitchell@gsa.gov,Database Administrator,Data Management,Donna Perez,08/11,2017,Secret
+Donna,Perez,06/10,1972,012-34-5690,913 Oakenwood Avenue,Haymarket,VA,20169,(703) 555-0130,donna.perez@gsa.gov,Compliance Officer,Regulatory Affairs,Gregory Roberts,10/27,2020,Public Trust
+Gregory,Roberts,07/27,1988,123-45-6712,024 Cedarbrook Court,Gainesville,VA,20155,(703) 555-0131,gregory.roberts@gsa.gov,Operations Manager,Field Operations,Rachel Turner,12/12,2018,Secret
+Rachel,Turner,08/14,1980,234-56-7823,135 Willowbrook Place,Bristow,VA,20136,(703) 555-0132,rachel.turner@gsa.gov,Acquisition Specialist,Procurement,Jeffrey Phillips,01/29,2021,Top Secret
+Jeffrey,Phillips,09/01,1983,345-67-8934,246 Maplewood Street,Nokesville,VA,20181,(703) 555-0133,jeffrey.phillips@gsa.gov,Information Security,Cybersecurity,Amy Campbell,03/16,2019,Secret
+Amy,Campbell,10/18,1974,456-78-9045,357 Elmbrook Drive,Warrenton,VA,20186,(703) 555-0134,amy.campbell@gsa.gov,Property Manager,Real Estate,Scott Parker,05/08,2022,Public Trust
+Scott,Parker,11/25,1987,567-89-0156,468 Oakbrook Lane,Manassas Park,VA,20111,(703) 555-0135,scott.parker@gsa.gov,Program Coordinator,Special Projects,Melissa Evans,07/24,2017,Secret
+Melissa,Evans,12/02,1979,678-90-1267,579 Cedarbrook Road,Dumfries,VA,22026,(703) 555-0136,melissa.evans@gsa.gov,Budget Officer,Financial Management,William Edwards,09/19,2020,Top Secret
+William,Edwards,01/19,1985,789-01-2378,680 Willowbrook Circle,Triangle,VA,22172,(703) 555-0137,william.edwards@gsa.gov,Technical Writer,Documentation,Stephanie Collins,11/05,2018,Secret
+Stephanie,Collins,02/16,1976,890-12-3489,791 Maplewood Court,Quantico,VA,22134,(703) 555-0138,stephanie.collins@gsa.gov,Event Coordinator,Special Events,Jason Stewart,01/21,2021,Public Trust
+Jason,Stewart,03/05,1982,901-23-4590,802 Elmwood Drive,Stafford,VA,22554,(540) 555-0139,jason.stewart@gsa.gov,Network Administrator,IT Infrastructure,Heather Sanchez,03/17,2019,Secret
+Heather,Sanchez,04/22,1978,012-34-5601,913 Oakwood Place,Fredericksburg,VA,22401,(540) 555-0140,heather.sanchez@gsa.gov,Grant Administrator,Grant Management,Kenneth Morris,05/13,2022,Top Secret
+Kenneth,Morris,05/09,1984,123-45-6723,024 Cedarwood Lane,Spotsylvania,VA,22551,(540) 555-0141,kenneth.morris@gsa.gov,Quality Control,Quality Assurance,Crystal Rogers,07/08,2017,Secret
+Crystal,Rogers,06/26,1981,234-56-7834,135 Willowwood Street,King George,VA,22485,(540) 555-0142,crystal.rogers@gsa.gov,Records Manager,Information Management,Antonio Reed,08/30,2020,Public Trust
+Antonio,Reed,07/13,1977,345-67-8945,246 Maplewood Avenue,Colonial Beach,VA,22443,(804) 555-0143,antonio.reed@gsa.gov,Maintenance Supervisor,Facilities,Tammy Cook,10/25,2018,Secret
+Tammy,Cook,08/30,1986,456-78-9056,357 Elmbrook Court,Montross,VA,22520,(804) 555-0144,tammy.cook@gsa.gov,Travel Coordinator,Administrative Services,Marcus Bailey,12/11,2021,Top Secret
+Marcus,Bailey,09/17,1973,567-89-0167,468 Oakbrook Street,Warsaw,VA,22572,(804) 555-0145,marcus.bailey@gsa.gov,Inventory Manager,Supply Management,Cynthia Rivera,02/07,2019,Secret
+Cynthia,Rivera,10/04,1988,678-90-1278,579 Cedarbrook Avenue,Tappahannock,VA,22560,(804) 555-0146,cynthia.rivera@gsa.gov,Customer Service,Client Relations,Derek Cooper,04/03,2022,Public Trust
+Derek,Cooper,11/21,1975,789-01-2389,680 Willowbrook Street,West Point,VA,23181,(804) 555-0147,derek.cooper@gsa.gov,Shipping Coordinator,Logistics,Vanessa Richardson,06/29,2017,Secret
+Vanessa,Richardson,12/18,1983,890-12-3490,791 Maplewood Place,Mechanicsville,VA,23111,(804) 555-0148,vanessa.richardson@gsa.gov,Web Developer,Digital Services,Carl Cox,08/14,2020,Top Secret

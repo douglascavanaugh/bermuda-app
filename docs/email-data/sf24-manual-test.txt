@@ -1,0 +1,21 @@
+FORM_TYPE: SF24_23A
+Brown Engineering LLC
+AIG Insurance Company
+WA
+08/15/2025
+IFB-2024-001
+12%
+
+Smith Construction Inc
+Liberty Mutual
+CA
+09/20/2025
+IFB-2024-002
+15%
+
+Johnson Builders Corp
+Travelers Insurance
+TX
+10/10/2025
+IFB-2024-003
+18%

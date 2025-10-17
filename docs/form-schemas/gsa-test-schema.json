@@ -1,0 +1,105 @@
+{
+  "formType": "GSA_TEST",
+  "name": "GSA Test Form",
+  "description": "Basic GSA form for testing PDF overlay functionality",
+  "version": "1.0",
+  "fields": [
+    {
+      "name": "firstName",
+      "label": "First Name",
+      "type": "text",
+      "x": 100,
+      "y": 700,
+      "width": 120,
+      "height": 20,
+      "fontSize": 12,
+      "required": true
+    },
+    {
+      "name": "lastName", 
+      "label": "Last Name",
+      "type": "text",
+      "x": 250,
+      "y": 700,
+      "width": 120,
+      "height": 20,
+      "fontSize": 12,
+      "required": true
+    },
+    {
+      "name": "address",
+      "label": "Address",
+      "type": "text",
+      "x": 100,
+      "y": 650,
+      "width": 300,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "city",
+      "label": "City",
+      "type": "text",
+      "x": 100,
+      "y": 620,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "state",
+      "label": "State",
+      "type": "text",
+      "x": 250,
+      "y": 620,
+      "width": 40,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "zip",
+      "label": "ZIP Code",
+      "type": "text",
+      "x": 320,
+      "y": 620,
+      "width": 80,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "ssn",
+      "label": "Social Security Number",
+      "type": "text",
+      "x": 100,
+      "y": 580,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    },
+    {
+      "name": "dateOfBirth",
+      "label": "Date of Birth",
+      "type": "date",
+      "x": 250,
+      "y": 580,
+      "width": 100,
+      "height": 20,
+      "fontSize": 10,
+      "required": true
+    }
+  ],
+  "metadata": {
+    "created": "2024-10-16",
+    "author": "Bermuda App",
+    "pdfTemplate": "gsa-test-template.pdf",
+    "pageSize": {
+      "width": 612,
+      "height": 792
+    }
+  }
+}

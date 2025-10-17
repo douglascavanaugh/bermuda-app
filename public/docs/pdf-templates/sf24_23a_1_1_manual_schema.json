@@ -1,0 +1,58 @@
+{
+  "formType": "sf24_23a_1",
+  "name": "SF24-23a-1 Manual Mapping",
+  "description": "Manually mapped field coordinates for SF24-23a-1",
+  "version": "1.0",
+  "hasFormFields": true,
+  "detectedFieldCount": 6,
+  "fields": [
+    {
+      "name": "principal",
+      "x": 22,
+      "y": 705,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10
+    },
+    {
+      "name": "surety",
+      "x": 22,
+      "y": 618,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10
+    },
+    {
+      "name": "state",
+      "x": 321,
+      "y": 653,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10
+    },
+    {
+      "name": "biddate",
+      "x": 286,
+      "y": 537,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10
+    },
+    {
+      "name": "invitationno",
+      "x": 372,
+      "y": 536,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10
+    },
+    {
+      "name": "percentbid",
+      "x": 21,
+      "y": 501,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10
+    }
+  ]
+}
