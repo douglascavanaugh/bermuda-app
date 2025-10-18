@@ -354,12 +354,11 @@ def create_gsa_pdf_overlay(form_data, template_type):
             dummy_buffer = io.BytesIO()
             field_positions = analyze_text_for_field_positions(None)
         
-        # 🎯 DIRECT USER FEEDBACK CALIBRATION
-        # Latest feedback: "too far to the left, needs to come up 150px and right 60px"
-        LEFT_OFFSET = -60   # Move RIGHT 60px (negative = move right)
-        VERTICAL_OFFSET = 150  # Move UP 150px (positive = move up)
+        # 🎯 TRUST THE AUTO-DETECTION! Use detected coordinates DIRECTLY!
+        # The field detection is PERFECT - let's not mess with it!
+        USE_RAW_COORDINATES = True
         
-        logger.info(f"🎯 Applying smart offsets: Left +{LEFT_OFFSET}pt, Up +{VERTICAL_OFFSET}pt")
+        logger.info(f"🎯 Using RAW detected coordinates - NO manual adjustments!")
         
         # CRITICAL DEBUG: Log the exact form_data we received
         logger.info(f"🚨 CRITICAL DEBUG - Raw form_data keys: {list(form_data.keys())}")
@@ -402,10 +401,14 @@ def create_gsa_pdf_overlay(form_data, template_type):
                 value = str(form_data[frontend_name])
                 x, y = field_positions[pdf_field_name]
                 
-                # Apply direct user feedback offsets
-                # Move RIGHT 60px and UP 150px
-                calibrated_x = x + LEFT_OFFSET   # LEFT_OFFSET = -60 (moves right)
-                calibrated_y = y + VERTICAL_OFFSET  # VERTICAL_OFFSET = +150 (moves up)
+                # USE RAW DETECTED COORDINATES - TRUST THE AUTO-DETECTION!
+                if USE_RAW_COORDINATES:
+                    calibrated_x = x  # Use EXACT detected coordinate
+                    calibrated_y = y  # Use EXACT detected coordinate
+                else:
+                    # Fallback (shouldn't be used)
+                    calibrated_x = x
+                    calibrated_y = y
                 
                 logger.info(f"📍 {frontend_name} → {pdf_field_name}: ({x}, {y}) → ({calibrated_x}, {calibrated_y}) = '{value}'")
                 
