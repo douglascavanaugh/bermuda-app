@@ -354,36 +354,10 @@ def create_gsa_pdf_overlay(form_data, template_type):
             dummy_buffer = io.BytesIO()
             field_positions = analyze_text_for_field_positions(None)
         
-        # 🎯 SMART AUTO-CALIBRATION - Analyze detected coordinates for perfect alignment
-        def calculate_smart_offsets(field_positions):
-            """Calculate optimal offsets based on detected field positions"""
-            if not field_positions:
-                return 0, 0
-            
-            # Analyze the coordinate patterns
-            x_coords = [pos[0] for pos in field_positions.values()]
-            y_coords = [pos[1] for pos in field_positions.values()]
-            
-            # Smart X offset: If most fields are very close to left edge, add padding
-            min_x = min(x_coords)
-            avg_x = sum(x_coords) / len(x_coords)
-            
-            # Smart Y offset: Based on coordinate distribution and form type
-            min_y = min(y_coords)
-            max_y = max(y_coords)
-            
-            # For GSA forms, fields are typically positioned too high by the PDF reader
-            # Apply intelligent calibration based on coordinate analysis
-            smart_x_offset = 0 if min_x > 50 else (50 - min_x)  # Ensure minimum 50pt from edge
-            smart_y_offset = -60  # Move DOWN 60pt based on user feedback pattern
-            
-            logger.info(f"📊 Coordinate analysis: X range({min(x_coords):.1f}-{max(x_coords):.1f}), Y range({min(y_coords):.1f}-{max(y_coords):.1f})")
-            logger.info(f"🎯 Smart offsets calculated: X+{smart_x_offset}pt, Y{smart_y_offset}pt")
-            
-            return smart_x_offset, smart_y_offset
-        
-        # Calculate smart offsets based on detected coordinates
-        LEFT_OFFSET, VERTICAL_OFFSET = calculate_smart_offsets(field_positions)
+        # 🎯 PRECISE USER-CALIBRATED OFFSETS - Based on your exact feedback!
+        # Your feedback: "positioned perfect but .75" padding on left" + "come down about 60-70px"
+        LEFT_OFFSET = 54   # 0.75 inches = 54 points (was perfect before)
+        VERTICAL_OFFSET = -65  # Move DOWN 65 points (negative = down, positive = up)
         
         logger.info(f"🎯 Applying smart offsets: Left +{LEFT_OFFSET}pt, Up +{VERTICAL_OFFSET}pt")
         
@@ -428,9 +402,11 @@ def create_gsa_pdf_overlay(form_data, template_type):
                 value = str(form_data[frontend_name])
                 x, y = field_positions[pdf_field_name]
                 
-                # Apply smart calibration offsets
-                calibrated_x = x + LEFT_OFFSET
-                calibrated_y = y + VERTICAL_OFFSET
+                # Apply precise calibration offsets
+                # LEFT_OFFSET: Remove 0.75" left padding (subtract to move left)
+                # VERTICAL_OFFSET: Move down 65pt (subtract from y to move down)
+                calibrated_x = x - LEFT_OFFSET  # SUBTRACT to remove left padding
+                calibrated_y = y + VERTICAL_OFFSET  # VERTICAL_OFFSET is already negative (-65)
                 
                 logger.info(f"📍 {frontend_name} → {pdf_field_name}: ({x}, {y}) → ({calibrated_x}, {calibrated_y}) = '{value}'")
                 
