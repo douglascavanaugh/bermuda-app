@@ -611,6 +611,55 @@ def get_coordinates():
         logger.error(f"Error getting coordinates: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/analyze-pdf-fields', methods=['POST'])
+def analyze_pdf_fields():
+    """
+    NEW ENDPOINT: Analyze any PDF and return all detected fields
+    This is the LEGENDARY automation endpoint!
+    """
+    try:
+        data = request.get_json()
+        pdf_url = data.get('pdf_url')
+        
+        if not pdf_url:
+            return jsonify({'error': 'No PDF URL provided'}), 400
+            
+        logger.info(f"🔍 LEGENDARY ANALYSIS: Analyzing PDF from {pdf_url}")
+        
+        # Download the PDF
+        response = requests.get(pdf_url, timeout=30)
+        if response.status_code != 200:
+            return jsonify({'error': f'Failed to download PDF: {response.status_code}'}), 400
+            
+        # Analyze the PDF
+        pdf_buffer = io.BytesIO(response.content)
+        field_positions = detect_pdf_form_fields(pdf_buffer)
+        
+        # Convert to the format expected by frontend
+        fields = []
+        for field_name, (x, y) in field_positions.items():
+            fields.append({
+                'name': field_name,
+                'x': float(x),
+                'y': float(y),
+                'type': 'checkbox' if any(keyword in field_name.lower() 
+                                        for keyword in ['individual', 'partnership', 'corporation', 'joint', 'other']) 
+                       else 'text'
+            })
+        
+        logger.info(f"✅ LEGENDARY SUCCESS: Detected {len(fields)} fields!")
+        
+        return jsonify({
+            'success': True,
+            'fields': fields,
+            'field_count': len(fields),
+            'pdf_url': pdf_url
+        })
+        
+    except Exception as e:
+        logger.error(f"❌ Analysis error: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=True)
