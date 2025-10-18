@@ -354,10 +354,10 @@ def create_gsa_pdf_overlay(form_data, template_type):
             dummy_buffer = io.BytesIO()
             field_positions = analyze_text_for_field_positions(None)
         
-        # 🎯 PRECISE USER-CALIBRATED OFFSETS - Based on your exact feedback!
-        # Your feedback: "positioned perfect but .75" padding on left" + "come down about 60-70px"
-        LEFT_OFFSET = 54   # 0.75 inches = 54 points (was perfect before)
-        VERTICAL_OFFSET = -65  # Move DOWN 65 points (negative = down, positive = up)
+        # 🎯 DIRECT USER FEEDBACK CALIBRATION
+        # Latest feedback: "too far to the left, needs to come up 150px and right 60px"
+        LEFT_OFFSET = -60   # Move RIGHT 60px (negative = move right)
+        VERTICAL_OFFSET = 150  # Move UP 150px (positive = move up)
         
         logger.info(f"🎯 Applying smart offsets: Left +{LEFT_OFFSET}pt, Up +{VERTICAL_OFFSET}pt")
         
@@ -402,11 +402,10 @@ def create_gsa_pdf_overlay(form_data, template_type):
                 value = str(form_data[frontend_name])
                 x, y = field_positions[pdf_field_name]
                 
-                # Apply precise calibration offsets
-                # LEFT_OFFSET: Remove 0.75" left padding (subtract to move left)
-                # VERTICAL_OFFSET: Move down 65pt (subtract from y to move down)
-                calibrated_x = x - LEFT_OFFSET  # SUBTRACT to remove left padding
-                calibrated_y = y + VERTICAL_OFFSET  # VERTICAL_OFFSET is already negative (-65)
+                # Apply direct user feedback offsets
+                # Move RIGHT 60px and UP 150px
+                calibrated_x = x + LEFT_OFFSET   # LEFT_OFFSET = -60 (moves right)
+                calibrated_y = y + VERTICAL_OFFSET  # VERTICAL_OFFSET = +150 (moves up)
                 
                 logger.info(f"📍 {frontend_name} → {pdf_field_name}: ({x}, {y}) → ({calibrated_x}, {calibrated_y}) = '{value}'")
                 
