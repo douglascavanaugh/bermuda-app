@@ -11,7 +11,9 @@ export async function POST(request) {
     console.log(`🔍 Analyzing form fields for: ${fileName}`);
 
     // Call our Python API to analyze the PDF
-    const pythonApiUrl = 'https://bermuda-app.onrender.com/api/analyze-pdf-fields';
+    const pythonApiUrl = process.env.NODE_ENV === 'production' 
+      ? 'https://bermuda-app.onrender.com/api/analyze-pdf-fields'
+      : 'http://localhost:5001/api/analyze-pdf-fields';
     
     const response = await fetch(pythonApiUrl, {
       method: 'POST',
@@ -19,13 +21,17 @@ export async function POST(request) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        pdf_url: `https://bermuda-app.vercel.app/docs/sample-pdfs/${fileName}`
+        pdf_url: process.env.NODE_ENV === 'production' 
+          ? `https://bermuda-app.vercel.app/docs/sample-pdfs/${fileName}`
+          : `http://localhost:3000/docs/sample-pdfs/${fileName}`
       }),
       timeout: 30000 // 30 second timeout
     });
 
     if (!response.ok) {
-      throw new Error(`Python API error: ${response.status}`);
+      const errorText = await response.text();
+      console.error(`❌ Python API error: ${response.status} - ${errorText}`);
+      throw new Error(`Python API error: ${response.status} - ${errorText}`);
     }
 
     const analysisResult = await response.json();
@@ -49,8 +55,10 @@ export async function POST(request) {
 
     return NextResponse.json({
       success: true,
-      fields: fields,
-      csv: csv,
+      detectedFields: fields,
+      fields: fields, // Keep for backward compatibility
+      generatedCSV: csv,
+      csv: csv, // Keep for backward compatibility
       formType: formType,
       fieldCount: fields.length
     });

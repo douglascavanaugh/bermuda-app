@@ -1,235 +1,401 @@
 "use client";
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 function PDFCoordinateMapper() {
-  const imageRef = useRef(null);
+  const canvasRef = useRef(null);
   const fileInputRef = useRef(null);
-  const [scale, setScale] = useState(1.0);
   const [fieldMappings, setFieldMappings] = useState([]);
   const [selectedFieldName, setSelectedFieldName] = useState('');
   const [isAddingField, setIsAddingField] = useState(false);
-  const [message, setMessage] = useState('Upload a PDF or image file to start mapping coordinates');
-  const [uploadedFiles, setUploadedFiles] = useState([]);
-  const [currentPageIndex, setCurrentPageIndex] = useState(0);
-  const [imageUrl, setImageUrl] = useState(null);
+  const [message, setMessage] = useState('Upload a PDF file to start mapping coordinates');
+  const [uploadedFile, setUploadedFile] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [detectedFields, setDetectedFields] = useState([]);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [generatedCSV, setGeneratedCSV] = useState('');
+  const [uploadedFileName, setUploadedFileName] = useState('');
 
-  // Actual GSA SF24-23A Bid Bond form fields
+  // ALL SF25-23A form fields (from the CSV we generated)
   const commonFields = [
-    // Basic Information
-    'principal_name_address',
-    'state_of_incorporation',
-    'surety_name_address',
+    // Page 1 fields
+    'page1_dateexecuted[0]',
+    'page1_principaladdress[0]',
+    'page1_millions[0]',
+    'page1_stateof[0]',
+    'page1_surety[0]',
+    'page1_individual[0]',
+    'page1_partnership[0]',
+    'page1_jointventure[0]',
+    'page1_corporation[0]',
+    'page1_other[0]',
+    'page1_cents[0]',
+    'page1_hunderds[0]',
+    'page1_thousands[0]',
+    'page1_millions[1]',
+    'page1_contractno[0]',
+    'page1_contratedate[0]',
     
-    // Organization Type (checkboxes)
-    'org_individual', 'org_partnership', 'org_joint_venture', 'org_corporation', 'org_other',
+    // Page 2 fields
+    'page2_nametitle1[0]',
+    'page2_nametitle2[0]',
+    'page2_nametitle3[0]',
+    'page2_nametitle20[0]',
+    'page2_nametitle[0]',
+    'page2_nameaddressa[0]',
+    'page2_nametitlea[0]',
+    'page2_nametitlea2[0]',
+    'page2_liabilitylimita[0]',
+    'page2_statea[0]',
+    'page2_nameaddressa[1]',
+    'page2_nametitlea[1]',
+    'page2_nametitlea2[1]',
+    'page2_liabilitylimita[1]',
+    'page2_statea[1]',
+    'page2_nameaddressa[2]',
+    'page2_nametitlea[2]',
+    'page2_nametitlea2[2]',
+    'page2_liabilitylimita[2]',
+    'page2_statea[2]',
+    'page2_nametitlea2[3]',
+    'page2_liabilitylimita[3]',
+    'page2_statea[3]',
+    'page2_nameaddressa[3]',
+    'page2_nametitlea[3]',
+    'page2_nametitlea2[4]',
+    'page2_nametitlea[4]',
+    'page2_liabilitylimita[4]',
+    'page2_statea[4]',
+    'page2_nameaddressa[4]',
     
-    // Penal Sum
-    'percent_of_bid_price',
-    'amount_millions', 'amount_thousands', 'amount_hundreds', 'amount_cents',
-    
-    // Bid Information
-    'bid_date',
-    'invitation_number',
-    'for_construction_supplies_services',
-    
-    // Principal Signatures & Names
-    'principal_signature_1', 'principal_signature_2', 'principal_signature_3',
-    'principal_name_title_1', 'principal_name_title_2', 'principal_name_title_3',
-    
-    // Individual Surety
-    'individual_surety_signature_1', 'individual_surety_signature_2',
-    'individual_surety_name_1', 'individual_surety_name_2',
-    
-    // Corporate Surety A-G
-    'surety_a_name_address', 'surety_a_state_incorporation', 'surety_a_liability_limit',
-    'surety_a_name_title_1', 'surety_a_name_title_2',
-    
-    'surety_b_name_address', 'surety_b_state_incorporation', 'surety_b_liability_limit',
-    'surety_b_name_title_1', 'surety_b_name_title_2',
-    
-    'surety_c_name_address', 'surety_c_state_incorporation', 'surety_c_liability_limit',
-    'surety_c_name_title_1', 'surety_c_name_title_2',
-    
-    'surety_d_name_address', 'surety_d_state_incorporation', 'surety_d_liability_limit',
-    'surety_d_name_title_1', 'surety_d_name_title_2',
-    
-    'surety_e_name_address', 'surety_e_state_incorporation', 'surety_e_liability_limit',
-    'surety_e_name_title_1', 'surety_e_name_title_2',
-    
-    'surety_f_name_address', 'surety_f_state_incorporation', 'surety_f_liability_limit',
-    'surety_f_name_title_1', 'surety_f_name_title_2',
-    
-    'surety_g_name_address', 'surety_g_state_incorporation', 'surety_g_liability_limit',
-    'surety_g_name_title_1', 'surety_g_name_title_2',
-    
-    // Instructions
-    'maximum_dollar_limitation'
+    // Page 3 fields
+    'page3_liabilitylimita[5]',
+    'page3_statea[5]',
+    'page3_nametitlea2[5]',
+    'page3_nameaddressa[5]',
+    'page3_nametitlea[5]',
+    'page3_liabilitylimita[6]',
+    'page3_statea[6]',
+    'page3_nametitlea2[6]',
+    'page3_nameaddressa[6]',
+    'page3_nametitlea[6]',
+    'page3_total[0]',
+    'page3_rateperthousand[0]'
   ];
 
-  // Handle file upload (multiple files for multi-page forms)
-  const handleFileUpload = (event) => {
-    const files = Array.from(event.target.files);
-    if (files.length === 0) return;
+  // Auto-detect fields from uploaded PDF
+  const analyzeUploadedPDF = async (file) => {
+    setIsAnalyzing(true);
+    setMessage('🔍 Auto-detecting form fields...');
+    
+    try {
+      // Save PDF to server first
+      const formData = new FormData();
+      formData.append('pdf', file);
+      
+      const uploadResponse = await fetch('/api/upload-form', {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (!uploadResponse.ok) {
+        throw new Error('Failed to upload PDF');
+      }
+      
+      const { fileName } = await uploadResponse.json();
+      setUploadedFileName(fileName); // Store filename for page navigation
+      
+      // Analyze the uploaded PDF
+      const analyzeResponse = await fetch('/api/analyze-form-fields', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ fileName })
+      });
+      
+      if (!analyzeResponse.ok) {
+        throw new Error('Failed to analyze PDF fields');
+      }
+      
+      const { detectedFields: fields } = await analyzeResponse.json();
+      
+      // Set detected fields for coordinate mapping
+      const fieldNames = fields.map(field => field.originalName || field.name);
+      setDetectedFields(fieldNames);
+      setMessage(`✅ Detected ${fields.length} form fields! Click field names to map coordinates.`);
+      
+      console.log('🎯 DETECTED FIELDS COUNT:', fields.length);
+      console.log('🎯 DETECTED FIELD NAMES:', fieldNames);
+      
+      // Check for duplicates
+      const duplicates = fieldNames.filter((name, index) => fieldNames.indexOf(name) !== index);
+      if (duplicates.length > 0) {
+        console.warn('⚠️ DUPLICATE FIELDS FOUND:', [...new Set(duplicates)]);
+      }
+      
+    } catch (error) {
+      console.error('Error analyzing PDF:', error);
+      setMessage('❌ Failed to analyze PDF. Using fallback field list.');
+      // Fallback to hardcoded fields if auto-detection fails
+      setDetectedFields(commonFields);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
 
-    // Filter for valid files
-    const validFiles = files.filter(file => 
-      file.type.startsWith('image/') || file.type === 'application/pdf'
-    );
+  // Handle PDF upload
+  const handleFileUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
 
-    if (validFiles.length === 0) {
-      setMessage('Please upload PDF or image files (PNG, JPG, etc.)');
+    if (file.type !== 'application/pdf') {
+      setMessage('Please upload a PDF file');
       return;
     }
 
-    setUploadedFiles(validFiles);
-    setCurrentPageIndex(0);
+    setUploadedFile(file);
+    setCurrentPage(1);
+    setTotalPages(4); // Default, will be updated
     
-    // Load first image if it's an image file
-    const firstFile = validFiles[0];
-    if (firstFile.type.startsWith('image/')) {
-      const url = URL.createObjectURL(firstFile);
-      setImageUrl(url);
-      setMessage(`${validFiles.length} file(s) uploaded. Page 1/${validFiles.length}: ${firstFile.name}`);
-    } else {
-      setImageUrl(null);
-      setMessage(`${validFiles.length} file(s) uploaded. Convert PDFs to images for visual mapping.`);
+    // Render PDF to canvas
+    renderPDFToCanvas(file, 1);
+    
+    // Auto-detect fields from the uploaded PDF
+    await analyzeUploadedPDF(file);
+  };
+
+  // Render PDF to canvas using Python API
+  const renderPDFToCanvas = async (file, pageNumber) => {
+    try {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      const ctx = canvas.getContext('2d');
+      
+      // Clear canvas and show loading
+      ctx.fillStyle = '#f8f9fa';
+      ctx.fillRect(0, 0, 612, 792);
+      ctx.fillStyle = '#6b7280';
+      ctx.font = '16px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('Loading PDF page...', 306, 396);
+
+      // Use stored filename if available, otherwise upload file
+      let fileName = uploadedFileName;
+      if (!fileName && file) {
+        // First time upload - store the filename
+        const uploadFormData = new FormData();
+        uploadFormData.append('pdf', file);
+        
+        const uploadResponse = await fetch('/api/upload-form', {
+          method: 'POST',
+          body: uploadFormData
+        });
+        
+        if (!uploadResponse.ok) {
+          throw new Error('Failed to upload PDF');
+        }
+        
+        const result = await uploadResponse.json();
+        fileName = result.fileName;
+        setUploadedFileName(fileName);
+      }
+
+      // Call Python API to get coordinate mapper image using filename
+      const formData = new FormData();
+      formData.append('filename', fileName);
+      formData.append('page_number', pageNumber.toString());
+
+      // Call Python API directly
+      const pythonApiUrl = process.env.NODE_ENV === 'production' 
+        ? 'https://bermuda-app.onrender.com/api/create-coordinate-mapper'
+        : 'http://localhost:5001/api/create-coordinate-mapper';
+        
+      const response = await fetch(pythonApiUrl, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to render PDF');
+      }
+
+      const blob = await response.blob();
+      const img = new Image();
+      
+      img.onload = () => {
+        // Clear canvas and draw PDF image
+        ctx.clearRect(0, 0, 612, 792);
+        ctx.drawImage(img, 0, 0, 612, 792);
+        
+        // Add grid overlay for better coordinate mapping
+        drawGrid(ctx);
+      };
+      
+      img.onerror = () => {
+        ctx.fillStyle = '#ef4444';
+        ctx.fillText('Failed to load PDF page', 306, 396);
+      };
+      
+      img.src = URL.createObjectURL(blob);
+      
+    } catch (error) {
+      console.error('Error rendering PDF:', error);
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#f8f9fa';
+        ctx.fillRect(0, 0, 612, 792);
+        ctx.fillStyle = '#ef4444';
+        ctx.font = '16px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Error loading PDF', 306, 396);
+      }
+      setMessage('❌ Error loading PDF. Make sure the Python API is running.');
     }
   };
 
-  // Handle image load
-  const handleImageLoad = () => {
-    setMessage('Form image loaded! Click field names to start mapping coordinates.');
-  };
-
-  // Handle image load error
-  const handleImageError = () => {
-    setMessage('Could not load form image. Please try a different file format.');
-  };
-
-  // Navigate between pages
-  const goToPage = (pageIndex) => {
-    if (pageIndex < 0 || pageIndex >= uploadedFiles.length) return;
+  // Draw grid overlay for better coordinate mapping
+  const drawGrid = (ctx) => {
+    ctx.strokeStyle = '#e5e7eb';
+    ctx.lineWidth = 0.5;
+    ctx.setLineDash([2, 2]);
     
-    setCurrentPageIndex(pageIndex);
-    const file = uploadedFiles[pageIndex];
+    // Vertical lines every 50 points
+    for (let x = 50; x < 612; x += 50) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, 792);
+      ctx.stroke();
+    }
     
-    if (file.type.startsWith('image/')) {
-      const url = URL.createObjectURL(file);
-      setImageUrl(url);
-      setMessage(`Page ${pageIndex + 1}/${uploadedFiles.length}: ${file.name}`);
-    } else {
-      setImageUrl(null);
-      setMessage(`Page ${pageIndex + 1}/${uploadedFiles.length}: ${file.name} (PDF - convert to image for visual mapping)`);
+    // Horizontal lines every 50 points
+    for (let y = 50; y < 792; y += 50) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(612, y);
+      ctx.stroke();
     }
+    
+    ctx.setLineDash([]);
   };
 
-  // Clear uploaded files
-  const clearFiles = () => {
-    setUploadedFiles([]);
-    setCurrentPageIndex(0);
-    setImageUrl(null);
-    setFieldMappings([]);
-    setMessage('Upload PDF or image files to start mapping coordinates');
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-
-  // Handle image/area click to capture coordinates
-  const handleImageClick = (event) => {
+  // Handle canvas click to capture coordinates
+  const handleCanvasClick = (event) => {
     if (!isAddingField || !selectedFieldName) return;
 
-    const element = imageRef.current;
-    if (!element) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-    const rect = element.getBoundingClientRect();
+    const rect = canvas.getBoundingClientRect();
     
-    // Get click coordinates relative to the element
+    // Get click coordinates relative to the canvas
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
     
-    let actualX, actualY;
+    // Convert to PDF coordinates (612x792 points for 8.5x11")
+    const pdfX = Math.round((x / rect.width) * 612);
+    const pdfY = Math.round(792 - (y / rect.height) * 792); // Flip Y coordinate
     
-    if (imageUrl) {
-      // For images: account for potential padding/margins
-      const img = element;
-      const naturalWidth = img.naturalWidth;
-      const naturalHeight = img.naturalHeight;
-      const displayWidth = rect.width;
-      const displayHeight = rect.height;
-      
-      // Calculate the actual image area (excluding padding)
-      const imageAspectRatio = naturalWidth / naturalHeight;
-      const displayAspectRatio = displayWidth / displayHeight;
-      
-      let imageDisplayWidth, imageDisplayHeight, offsetX = 0, offsetY = 0;
-      
-      if (imageAspectRatio > displayAspectRatio) {
-        // Image is wider - will have vertical padding
-        imageDisplayWidth = displayWidth;
-        imageDisplayHeight = displayWidth / imageAspectRatio;
-        offsetY = (displayHeight - imageDisplayHeight) / 2;
-      } else {
-        // Image is taller - will have horizontal padding
-        imageDisplayHeight = displayHeight;
-        imageDisplayWidth = displayHeight * imageAspectRatio;
-        offsetX = (displayWidth - imageDisplayWidth) / 2;
-      }
-      
-      // Adjust click coordinates to account for padding
-      const adjustedX = x - offsetX;
-      const adjustedY = y - offsetY;
-      
-      // Convert to PDF coordinates (612x792 points for 8.5x11")
-      actualX = Math.round((adjustedX / imageDisplayWidth) * 612);
-      actualY = Math.round(792 - (adjustedY / imageDisplayHeight) * 792);
-      
-      console.log(`🖼️ Image click: (${x}, ${y}) → Adjusted: (${adjustedX}, ${adjustedY}) → PDF: (${actualX}, ${actualY})`);
-      console.log(`📐 Padding: X=${offsetX}, Y=${offsetY} | Display: ${imageDisplayWidth}x${imageDisplayHeight}`);
-    } else {
-      // For placeholder area: direct conversion
-      actualX = Math.round((x / rect.width) * 612);
-      actualY = Math.round(792 - (y / rect.height) * 792);
-      console.log(`📄 Placeholder click: (${x}, ${y}) → PDF: (${actualX}, ${actualY})`);
-    }
+    // Use current page being viewed
+    const pageNumber = currentPage;
 
-    // Add field mapping with page information
+    // Add field mapping
     const newField = {
       name: selectedFieldName,
-      x: actualX,
-      y: actualY,
+      x: pdfX,
+      y: pdfY,
       width: 120,
       height: 20,
       fontSize: 10,
-      page: currentPageIndex + 1 // 1-based page numbering
+      page: pageNumber
     };
 
-    setFieldMappings(prev => [...prev, newField]);
+    setFieldMappings(prev => {
+      const updated = [...prev, newField];
+      // Auto-generate CSV when fields are added
+      setTimeout(() => {
+        const headers = updated.map(field => field.name);
+        const sampleRow = updated.map(field => field.name);
+        const csvContent = [
+          headers.join(','),
+          sampleRow.map(value => `"${value}"`).join(',')
+        ].join('\n');
+        setGeneratedCSV(csvContent);
+      }, 100);
+      return updated;
+    });
+    
     setSelectedFieldName('');
     setIsAddingField(false);
-    setMessage(`Added field "${selectedFieldName}" at coordinates (${actualX}, ${actualY})`);
+    setMessage(`✅ Added field "${selectedFieldName}" at PDF coordinates (${pdfX}, ${pdfY}) on page ${pageNumber}`);
 
-    console.log(`Added field: ${selectedFieldName} at (${actualX}, ${actualY})`);
+    console.log(`Added field: ${selectedFieldName} at PDF (${pdfX}, ${pdfY}) page ${pageNumber}`);
   };
 
   // Start adding a field
   const startAddingField = (fieldName) => {
     setSelectedFieldName(fieldName);
     setIsAddingField(true);
+    setMessage(`🎯 Click on the canvas where "${fieldName}" should be placed`);
   };
 
   // Remove field mapping
   const removeField = (index) => {
     setFieldMappings(prev => prev.filter((_, i) => i !== index));
+    setMessage('Field removed');
+  };
+
+  // Generate CSV template with field names as values
+  const generateCSVTemplate = () => {
+    if (fieldMappings.length === 0) {
+      setGeneratedCSV('');
+      return;
+    }
+
+    // Create CSV headers from mapped field names
+    const headers = fieldMappings.map(field => field.name);
+    
+    // Create sample row with field names as values (for debugging)
+    const sampleRow = fieldMappings.map(field => field.name);
+    
+    // Generate CSV content
+    const csvContent = [
+      headers.join(','),
+      sampleRow.map(value => `"${value}"`).join(',')
+    ].join('\n');
+    
+    setGeneratedCSV(csvContent);
+    setMessage(`✅ Generated CSV template with ${fieldMappings.length} fields!`);
+  };
+
+  // Copy CSV to clipboard
+  const copyCSVToClipboard = async () => {
+    if (!generatedCSV) {
+      setMessage('❌ No CSV generated yet');
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(generatedCSV);
+      setMessage('✅ CSV copied to clipboard!');
+    } catch (error) {
+      console.error('Failed to copy CSV:', error);
+      setMessage('❌ Failed to copy CSV to clipboard');
+    }
   };
 
   // Export field mappings as JSON
   const exportMappings = () => {
-    const formName = uploadedFiles.length > 0 ? uploadedFiles[0].name.replace(/\.[^/.]+$/, "").replace(/-\d+$/, "") : "custom-form";
-    // Generate lowercase form type and filename for consistency
+    if (fieldMappings.length === 0) {
+      setMessage('❌ No fields mapped yet');
+      return;
+    }
+
+    const formName = uploadedFile ? uploadedFile.name.replace('.pdf', '') : 'custom-form';
     const formType = formName.toLowerCase().replace(/[^a-z0-9]/g, '_');
-    const fileName = formName.toLowerCase().replace(/[^a-z0-9]/g, '_');
     
     const schema = {
       formType: formType,
@@ -245,23 +411,43 @@ function PDFCoordinateMapper() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `${fileName}_1_1_manual_schema.json`;
+    link.download = `${formType}_manual_schema.json`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    setMessage('JSON schema exported successfully with lowercase naming!');
+    setMessage('✅ JSON schema exported successfully!');
   };
 
-  // No useEffect needed - react-pdf handles loading automatically
+  // Navigate between pages
+  const goToPage = (pageNumber) => {
+    if (!uploadedFile || pageNumber < 1 || pageNumber > totalPages) return;
+    setCurrentPage(pageNumber);
+    renderPDFToCanvas(uploadedFile, pageNumber);
+    setMessage(`📄 Showing page ${pageNumber} of ${totalPages}. Click field names, then click on the PDF to map coordinates.`);
+  };
+
+  // Clear all data
+  const clearAll = () => {
+    setUploadedFile(null);
+    setFieldMappings([]);
+    setSelectedFieldName('');
+    setIsAddingField(false);
+    setCurrentPage(1);
+    setTotalPages(1);
+    setMessage('Upload a PDF file to start mapping coordinates');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   return (
     <div className="max-w-7xl mx-auto p-6 bg-gray-800 rounded-lg">
       <h2 className="text-3xl font-bold text-white mb-6 text-center">
-        FORM COORDINATE MAPPER 🎯📍
+        🎯 BULLETPROOF PDF COORDINATE MAPPER
       </h2>
       <p className="text-center text-gray-300 mb-8">
-        Click field names, then click on the form area to map exact coordinates!
+        NO IMAGE CONVERSION BULLSHIT! Upload PDF → Click fields → Export schema!
       </p>
 
       {/* Status Message */}
@@ -274,23 +460,19 @@ function PDFCoordinateMapper() {
         <div className="space-y-6">
           {/* File Upload */}
           <div className="bg-gray-700 p-4 rounded">
-            <h3 className="text-lg font-bold text-white mb-4">📁 Upload Form</h3>
+            <h3 className="text-lg font-bold text-white mb-4">📁 Upload PDF</h3>
             
-            {uploadedFiles.length === 0 ? (
+            {!uploadedFile ? (
               <div className="space-y-4">
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".pdf,.png,.jpg,.jpeg,.gif,.bmp,.webp"
-                  multiple
+                  accept=".pdf"
                   onChange={handleFileUpload}
                   className="w-full p-3 border border-gray-600 rounded-md bg-gray-800 text-white file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-blue-600 file:text-white hover:file:bg-blue-700"
                 />
                 <p className="text-gray-300 text-sm">
-                  📄 <strong>Multi-page support!</strong> Upload multiple PNG files (page 1, page 2, etc.) for complete form mapping.
-                </p>
-                <p className="text-gray-300 text-xs">
-                  💡 Tip: Name your files like "SF24-23a-1.png", "SF24-23a-2.png", etc.
+                  📄 Upload your PDF form directly - no conversion needed!
                 </p>
               </div>
             ) : (
@@ -298,97 +480,92 @@ function PDFCoordinateMapper() {
                 <div className="p-3 bg-green-800 rounded border border-green-600">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-green-100 font-medium">📄 {uploadedFiles.length} file(s) uploaded</p>
-                      <p className="text-green-200 text-sm">
-                        {uploadedFiles.map(f => f.name).join(', ')}
-                      </p>
+                      <p className="text-green-100 font-medium">📄 {uploadedFile.name}</p>
+                      <p className="text-green-200 text-sm">Ready for coordinate mapping</p>
                     </div>
                     <button
-                      onClick={clearFiles}
+                      onClick={clearAll}
                       className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-sm"
                     >
-                      Clear All
+                      Clear
                     </button>
                   </div>
                 </div>
                 
                 {/* Page Navigation */}
-                {uploadedFiles.length > 1 && (
+                {uploadedFile && totalPages > 1 && (
                   <div className="p-3 bg-blue-900 rounded border border-blue-600">
                     <p className="text-blue-100 font-medium mb-2">📄 Page Navigation:</p>
                     <div className="flex flex-wrap gap-2">
-                      {uploadedFiles.map((file, index) => (
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
                         <button
-                          key={index}
-                          onClick={() => goToPage(index)}
+                          key={pageNum}
+                          onClick={() => goToPage(pageNum)}
                           className={`px-3 py-1 rounded text-sm transition-colors ${
-                            index === currentPageIndex
+                            pageNum === currentPage
                               ? 'bg-blue-600 text-white'
                               : 'bg-blue-800 hover:bg-blue-700 text-blue-200'
                           }`}
                         >
-                          Page {index + 1}
+                          Page {pageNum}
                         </button>
                       ))}
                     </div>
-                  </div>
-                )}
-                
-                {!imageUrl && uploadedFiles[currentPageIndex]?.type === 'application/pdf' && (
-                  <div className="p-3 bg-yellow-900 border border-yellow-600 rounded text-yellow-200">
-                    <p className="font-semibold mb-2">📋 PDF Mapping Options</p>
-                    
-                    <div className="mb-4">
-                      <p className="text-sm font-semibold mb-2">🎯 Option 1: Visual Mapping (Recommended)</p>
-                      <p className="text-sm mb-2">Convert your PDF to an image for precise visual mapping:</p>
-                      <ol className="text-sm list-decimal list-inside space-y-1 mb-2">
-                        <li>Go to <a href="https://pdf2png.com/" target="_blank" className="text-blue-300 underline">pdf2png.com</a></li>
-                        <li>Upload your PDF and convert to PNG</li>
-                        <li>Download and upload the PNG here</li>
-                      </ol>
-                      <p className="text-xs text-yellow-300">✅ Improved padding detection will account for image margins!</p>
-                    </div>
-                    
-                    <div className="border-t border-yellow-600 pt-3">
-                      <p className="text-sm font-semibold mb-2">📐 Option 2: Coordinate-Only Mapping</p>
-                      <p className="text-sm mb-2">Map coordinates without visual preview using the placeholder area below.</p>
-                      <p className="text-xs text-yellow-300">⚠️ Less precise but works directly with PDF dimensions.</p>
-                    </div>
+                    <p className="text-blue-200 text-xs mt-2">
+                      Currently viewing: Page {currentPage} of {totalPages}
+                    </p>
                   </div>
                 )}
               </div>
             )}
           </div>
+
           {/* Field Selection */}
           <div className="bg-gray-700 p-4 rounded">
             <h3 className="text-lg font-bold text-white mb-4">🖱️ Field Mapping</h3>
             
-            <p className="text-gray-300 text-sm mb-4">
-              Click a field name below, then click on the PDF where that field should go.
-            </p>
+            {isAnalyzing ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                <p className="text-blue-300">🔍 Auto-detecting form fields...</p>
+              </div>
+            ) : (
+              <>
+                <p className="text-gray-300 text-sm mb-4">
+                  {detectedFields.length > 0 
+                    ? `✅ Detected ${detectedFields.length} form fields. Click a field name, then click on the canvas where that field should go.`
+                    : "Click a field name, then click on the canvas where that field should go."
+                  }
+                </p>
             
             <div className="space-y-2 max-h-64 overflow-y-auto">
-              {commonFields.map(fieldName => (
+              {(detectedFields.length > 0 ? detectedFields : commonFields).map(fieldName => (
                 <button
                   key={fieldName}
                   onClick={() => startAddingField(fieldName)}
-                  disabled={isAddingField}
-                  className={`w-full p-2 text-left rounded transition-colors ${
+                  disabled={isAddingField || !uploadedFile}
+                  className={`w-full p-2 text-left rounded transition-colors text-sm ${
                     selectedFieldName === fieldName 
                       ? 'bg-blue-600 text-white' 
                       : 'bg-gray-600 hover:bg-gray-500 text-gray-200'
-                  } ${isAddingField ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  } ${(isAddingField || !uploadedFile) ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   {fieldName}
                 </button>
               ))}
             </div>
+              </>
+            )}
             
             {isAddingField && (
               <div className="mt-4 p-3 bg-blue-900 rounded text-blue-200">
-                <p className="font-semibold">📍 Click on "{selectedFieldName}" field in the PDF →</p>
+                <p className="font-semibold">📍 Click on canvas to place "{selectedFieldName}"</p>
                 <button
-                  onClick={() => setIsAddingField(false)}
+                  onClick={() => {
+                    setIsAddingField(false);
+                    setSelectedFieldName('');
+                    setMessage('Field placement cancelled');
+                  }}
                   className="mt-2 px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-sm"
                 >
                   Cancel
@@ -415,7 +592,7 @@ function PDFCoordinateMapper() {
               {fieldMappings.map((field, index) => (
                 <div key={index} className="flex justify-between items-center p-2 bg-gray-600 rounded">
                   <div className="text-gray-200">
-                    <div className="font-semibold">{field.name}</div>
+                    <div className="font-semibold text-xs">{field.name}</div>
                     <div className="text-xs text-gray-400">
                       Page {field.page} • ({field.x}, {field.y})
                     </div>
@@ -436,96 +613,84 @@ function PDFCoordinateMapper() {
           </div>
         </div>
 
-        {/* Right Columns - PDF Viewer */}
+        {/* Right Columns - Canvas */}
         <div className="lg:col-span-2">
           <div className="bg-gray-700 p-4 rounded">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-bold text-white">PDF Viewer:</h3>
-              <div className="flex items-center space-x-2">
-                <label className="text-white text-sm">Scale:</label>
-                <select 
-                  value={scale} 
-                  onChange={(e) => setScale(parseFloat(e.target.value))}
-                  className="px-2 py-1 bg-gray-600 text-white rounded text-sm"
-                >
-                  <option value={0.75}>75%</option>
-                  <option value={1.0}>100%</option>
-                  <option value={1.25}>125%</option>
-                  <option value={1.5}>150%</option>
-                  <option value={2.0}>200%</option>
-                </select>
-              </div>
-            </div>
+            <h3 className="text-lg font-bold text-white mb-4">📄 PDF Canvas (Click to Map Fields)</h3>
             
-            <div className="border border-gray-600 rounded overflow-auto max-h-[800px] bg-white p-4">
-              {imageUrl ? (
-                /* Show uploaded image */
-                <div className="relative">
-                  <img
-                    ref={imageRef}
-                    src={imageUrl}
-                    alt="Uploaded form"
-                    onLoad={handleImageLoad}
-                    onError={handleImageError}
-                    onClick={handleImageClick}
-                    className={`w-full max-w-full h-auto ${
-                      isAddingField ? 'cursor-crosshair' : 'cursor-default'
-                    }`}
-                    style={{ maxHeight: '800px', objectFit: 'contain' }}
-                  />
-                  {isAddingField && (
-                    <div className="absolute top-4 left-4 bg-blue-600 text-white px-3 py-2 rounded shadow-lg">
-                      📍 Click to place "{selectedFieldName}" field
-                    </div>
-                  )}
-                </div>
-              ) : (
-                /* Show placeholder when no image */
-                <div 
-                  ref={imageRef}
-                  onClick={handleImageClick}
-                  className={`w-full h-[600px] border-2 border-dashed border-gray-300 flex items-center justify-center ${
-                    isAddingField ? 'cursor-crosshair bg-blue-50' : 'cursor-default bg-gray-50'
-                  }`}
-                  style={{ aspectRatio: '8.5/11' }}
-                >
+            <div className="border border-gray-600 rounded overflow-hidden bg-white">
+              <canvas
+                ref={canvasRef}
+                width={612}
+                height={792}
+                onClick={handleCanvasClick}
+                className={`w-full h-auto ${
+                  isAddingField ? 'cursor-crosshair' : 'cursor-default'
+                } ${!uploadedFile ? 'opacity-50' : ''}`}
+                style={{ 
+                  maxHeight: '800px',
+                  aspectRatio: '612/792',
+                  backgroundColor: uploadedFile ? 'white' : '#f3f4f6'
+                }}
+              />
+              
+              {!uploadedFile && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                   <div className="text-center text-gray-500">
-                    {uploadedFiles.length > 0 ? (
-                      <>
-                        <p className="text-lg font-semibold mb-2">📄 Page {currentPageIndex + 1}/{uploadedFiles.length}</p>
-                        <p className="text-sm mb-2">{uploadedFiles[currentPageIndex]?.name}</p>
-                        <p className="text-sm mb-4">Click anywhere to map field coordinates</p>
-                        {isAddingField && (
-                          <p className="text-blue-600 font-semibold">
-                            📍 Click to place "{selectedFieldName}" field
-                          </p>
-                        )}
-                        <div className="mt-4 text-xs text-gray-400">
-                          <p>Standard 8.5" x 11" page (612 x 792 points)</p>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <p className="text-lg font-semibold mb-2">📁 Upload a Form</p>
-                        <p className="text-sm mb-4">Upload a PDF or image file to start mapping</p>
-                        <div className="mt-4 text-xs text-gray-400">
-                          <p>Supports PDF, PNG, JPG, and other image formats</p>
-                        </div>
-                      </>
-                    )}
+                    <p className="text-lg font-semibold mb-2">📁 Upload a PDF first</p>
+                    <p className="text-sm">Canvas will be active after PDF upload</p>
                   </div>
+                </div>
+              )}
+              
+              {isAddingField && uploadedFile && (
+                <div className="absolute top-4 left-4 bg-blue-600 text-white px-3 py-2 rounded shadow-lg pointer-events-none">
+                  📍 Click to place "{selectedFieldName}"
                 </div>
               )}
             </div>
             
-            {isAddingField && (
-              <div className="mt-4 p-3 bg-yellow-900 border border-yellow-600 rounded text-yellow-200">
-                <p className="font-semibold">🎯 Instructions:</p>
-                <p className="text-sm">Click exactly where you want to place the "{selectedFieldName}" field data.</p>
-              </div>
-            )}
+            <div className="mt-4 text-center text-gray-300 text-sm">
+              <p>📐 Canvas represents standard 8.5" × 11" page (612 × 792 points)</p>
+              {uploadedFile && (
+                <p className="text-green-300">✅ Click anywhere on the white canvas to map field coordinates</p>
+              )}
+            </div>
           </div>
         </div>
+
+        {/* CSV Template Display */}
+        {generatedCSV && (
+          <div className="mt-6 bg-gray-700 p-4 rounded">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-white">📋 Generated CSV Template</h3>
+              <div className="space-x-2">
+                <button
+                  onClick={copyCSVToClipboard}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm"
+                >
+                  📋 Copy CSV
+                </button>
+                <button
+                  onClick={generateCSVTemplate}
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded text-sm"
+                >
+                  🔄 Refresh CSV
+                </button>
+              </div>
+            </div>
+            
+            <div className="bg-gray-900 p-4 rounded border border-gray-600">
+              <pre className="text-green-400 text-sm font-mono whitespace-pre-wrap overflow-x-auto">
+                {generatedCSV}
+              </pre>
+            </div>
+            
+            <p className="text-gray-300 text-sm mt-2">
+              ✅ Field names are used as values for debugging. Replace with actual data for batch processing.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
