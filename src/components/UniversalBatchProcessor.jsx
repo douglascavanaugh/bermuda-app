@@ -24,6 +24,13 @@ function UniversalBatchProcessor() {
         fieldCount: 6
       },
       {
+        id: 'sf25_23a',
+        name: 'GSA SF25-23A Performance Bond',
+        formType: 'SF25_23A',
+        description: 'Standard Form 25-23A for performance bonds',
+        fieldCount: 52
+      },
+      {
         id: 'hawaii',
         name: 'Hawaii Investigation Form',
         formType: 'HAWAII',
@@ -46,9 +53,13 @@ function UniversalBatchProcessor() {
     const firstLine = data.split('\n')[0].toLowerCase();
     console.log('🔍 Template detection - First line:', firstLine);
     
-    // Look for template indicators
-    if (firstLine.includes('sf24') || firstLine.includes('gsa')) {
-      console.log('✅ Detected SF24/GSA template');
+    // Look for template indicators (case insensitive)
+    if (firstLine.includes('sf25') || firstLine.includes('sf25_23a')) {
+      console.log('✅ Detected sf25_23a template');
+      return availableTemplates.find(t => t.id === 'sf25_23a');
+    }
+    if (firstLine.includes('sf24') || firstLine.includes('sf24_23a') || firstLine.includes('gsa')) {
+      console.log('✅ Detected sf24_23a template');
       return availableTemplates.find(t => t.id === 'sf24_23a');
     }
     if (firstLine.includes('hawaii')) {
@@ -375,9 +386,14 @@ function UniversalBatchProcessor() {
     try {
       console.log('🐍 Generating PDF via Python API:', entry);
       console.log('📋 Template:', template.id);
+      console.log('🚨 CRITICAL: Sending template_type to Python API:', template.id);
       
       // Call the Python API for perfect PDF generation
-      const response = await fetch('https://bermuda-app.onrender.com/api/process-gsa-pdf', {
+      const pythonApiUrl = process.env.NODE_ENV === 'production' 
+        ? 'https://bermuda-app.onrender.com/api/process-gsa-pdf'
+        : 'http://localhost:5001/api/process-gsa-pdf';
+        
+      const response = await fetch(pythonApiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -471,32 +487,43 @@ function UniversalBatchProcessor() {
     setMessage(`Saving ${successResults.length} PDFs to processed-pdfs/${selectedTemplate.formType.toLowerCase()} folder...`);
     
     try {
-      // Prepare PDFs for server
-      const pdfsToSave = await Promise.all(successResults.map(async (result) => ({
-        filename: result.filename,
-        bytes: Array.from(new Uint8Array(await result.pdfBlob.arrayBuffer())) // Convert blob to bytes array
-      })));
+      const batchId = Date.now();
+      const CHUNK_SIZE = 50; // Process 50 PDFs at a time to avoid size limits
+      let totalSaved = 0;
       
-      const batchId = Date.now(); // Simple batch ID
-      
-      const response = await fetch('/api/save-batch-pdfs', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          pdfs: pdfsToSave,
-          formType: selectedTemplate.formType,
-          batchId: batchId
-        })
-      });
-      
-      if (response.ok) {
-        const result = await response.json();
-        setMessage(`✅ ${result.saved} PDFs saved to processed-pdfs/${selectedTemplate.formType.toLowerCase()}/ folder! 📁 Batch ID: ${batchId} 📊 Total Size: ${result.totalSize} 🚀 Ready for bulk email delivery!`);
-      } else {
-        throw new Error('Failed to save PDFs to server');
+      // Process in chunks
+      for (let i = 0; i < successResults.length; i += CHUNK_SIZE) {
+        const chunk = successResults.slice(i, i + CHUNK_SIZE);
+        setMessage(`Saving PDFs ${i + 1}-${Math.min(i + CHUNK_SIZE, successResults.length)} of ${successResults.length}...`);
+        
+        // Prepare PDFs for server
+        const pdfsToSave = await Promise.all(chunk.map(async (result) => ({
+          filename: result.filename,
+          bytes: Array.from(new Uint8Array(await result.pdfBlob.arrayBuffer()))
+        })));
+        
+        const response = await fetch('/api/save-batch-pdfs', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            pdfs: pdfsToSave,
+            formType: selectedTemplate.formType,
+            batchId: batchId,
+            chunkNumber: Math.floor(i / CHUNK_SIZE) + 1
+          })
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          totalSaved += result.filesCount;
+        } else {
+          throw new Error(`Failed to save chunk ${Math.floor(i / CHUNK_SIZE) + 1}`);
+        }
       }
+      
+      setMessage(`✅ ${totalSaved} PDFs saved to processed-pdfs/${selectedTemplate.formType.toLowerCase()}/ folder! 📁 Batch ID: ${batchId} 🚀 Ready for bulk email delivery!`);
     } catch (error) {
       setMessage(`Failed to save PDFs: ${error.message}`);
     }
@@ -539,11 +566,14 @@ function UniversalBatchProcessor() {
       // Auto-detect template if not already selected
       if (!selectedTemplate) {
         const detected = detectTemplate(value);
+        console.log('🔍 DETECTION RESULT:', detected);
         if (detected) {
           setSelectedTemplate(detected);
+          console.log('✅ TEMPLATE SET TO:', detected.id);
           setMessage(`🤖 Auto-detected: ${detected.name} (${detectedFormat.toUpperCase()} format)`);
         }
       } else {
+        console.log('📋 USING EXISTING TEMPLATE:', selectedTemplate.id);
         setMessage(`📊 Format detected: ${detectedFormat.toUpperCase()}`);
       }
     }
@@ -627,7 +657,7 @@ function UniversalBatchProcessor() {
               placeholder={dataFormat === 'csv' 
                 ? "Paste CSV data with headers..." 
                 : "Paste text data (line by line)..."}
-              className="w-full h-64 p-3 border border-gray-600 rounded-md bg-gray-800 text-white resize-none focus:ring-2 focus:ring-blue-500"
+              className="w-full h-96 p-3 border border-gray-600 rounded-md bg-gray-800 text-white resize-y focus:ring-2 focus:ring-blue-500 max-h-screen"
             />
           </div>
 

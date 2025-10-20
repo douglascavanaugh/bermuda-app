@@ -16,73 +16,18 @@ function PDFCoordinateMapper() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [generatedCSV, setGeneratedCSV] = useState('');
   const [uploadedFileName, setUploadedFileName] = useState('');
+  const [visualFields, setVisualFields] = useState([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const [draggedFieldId, setDraggedFieldId] = useState(null);
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizingFieldId, setResizingFieldId] = useState(null);
+  const [resizeHandle, setResizeHandle] = useState(null);
+  
+  // 🚀 CLEAN & SIMPLE: Back to proven React state management
+  
+  // 🚫 ZOOM REMOVED: Caused positioning issues, keeping it simple and bulletproof!
 
-  // ALL SF25-23A form fields (from the CSV we generated)
-  const commonFields = [
-    // Page 1 fields
-    'page1_dateexecuted[0]',
-    'page1_principaladdress[0]',
-    'page1_millions[0]',
-    'page1_stateof[0]',
-    'page1_surety[0]',
-    'page1_individual[0]',
-    'page1_partnership[0]',
-    'page1_jointventure[0]',
-    'page1_corporation[0]',
-    'page1_other[0]',
-    'page1_cents[0]',
-    'page1_hunderds[0]',
-    'page1_thousands[0]',
-    'page1_millions[1]',
-    'page1_contractno[0]',
-    'page1_contratedate[0]',
-    
-    // Page 2 fields
-    'page2_nametitle1[0]',
-    'page2_nametitle2[0]',
-    'page2_nametitle3[0]',
-    'page2_nametitle20[0]',
-    'page2_nametitle[0]',
-    'page2_nameaddressa[0]',
-    'page2_nametitlea[0]',
-    'page2_nametitlea2[0]',
-    'page2_liabilitylimita[0]',
-    'page2_statea[0]',
-    'page2_nameaddressa[1]',
-    'page2_nametitlea[1]',
-    'page2_nametitlea2[1]',
-    'page2_liabilitylimita[1]',
-    'page2_statea[1]',
-    'page2_nameaddressa[2]',
-    'page2_nametitlea[2]',
-    'page2_nametitlea2[2]',
-    'page2_liabilitylimita[2]',
-    'page2_statea[2]',
-    'page2_nametitlea2[3]',
-    'page2_liabilitylimita[3]',
-    'page2_statea[3]',
-    'page2_nameaddressa[3]',
-    'page2_nametitlea[3]',
-    'page2_nametitlea2[4]',
-    'page2_nametitlea[4]',
-    'page2_liabilitylimita[4]',
-    'page2_statea[4]',
-    'page2_nameaddressa[4]',
-    
-    // Page 3 fields
-    'page3_liabilitylimita[5]',
-    'page3_statea[5]',
-    'page3_nametitlea2[5]',
-    'page3_nameaddressa[5]',
-    'page3_nametitlea[5]',
-    'page3_liabilitylimita[6]',
-    'page3_statea[6]',
-    'page3_nametitlea2[6]',
-    'page3_nameaddressa[6]',
-    'page3_nametitlea[6]',
-    'page3_total[0]',
-    'page3_rateperthousand[0]'
-  ];
+  // 🔥 NO MORE HARDCODED GARBAGE! We use dynamic field detection now! ✨
 
   // Auto-detect fields from uploaded PDF
   const analyzeUploadedPDF = async (file) => {
@@ -124,10 +69,106 @@ function PDFCoordinateMapper() {
       // Set detected fields for coordinate mapping
       const fieldNames = fields.map(field => field.originalName || field.name);
       setDetectedFields(fieldNames);
-      setMessage(`✅ Detected ${fields.length} form fields! Click field names to map coordinates.`);
+      
+      // 🔥 MAGIC: Create visual field data with SMART AUTO-SIZING!
+      // Only create HTML fields for detected fields (no extras!)
+      const visualFieldData = fields.map((field, index) => {
+        const rawName = field.originalName || field.name;
+        
+        // 🧹 SUPER CLEAN FIELD NAMES (MATCH MANUAL SCHEMA!)
+        let cleanName = rawName
+          .replace(/form\d+\[\d+\]\.?/g, '')           // Remove form1[0].
+          .replace(/#subform\[\d+\]\.?/g, '')          // Remove #subform[0].
+          .replace(/\[\d+\]$/g, '')                    // Remove trailing [0]
+          .replace(/^\.+|\.+$/g, '')                   // Remove leading/trailing dots
+          .replace(/\./g, '_')                         // Replace dots with underscores
+          .toLowerCase();                              // 🔥 FORCE LOWERCASE!
+        
+        // 🎯 MATCH MANUAL SCHEMA NAMES (NO MORE MAPPING NEEDED!)
+        const schemaNameMapping = {
+          'state_of_incorporation': 'state',
+          'bid_date': 'biddate',
+          'percent_of_bid_price': 'percentbid', 
+          'invitation_number': 'invitationno'
+        };
+        
+        if (schemaNameMapping[cleanName]) {
+          cleanName = schemaNameMapping[cleanName];
+        }
+        
+        // If still messy, use a generic name
+        if (cleanName.length < 2 || cleanName.includes('form') || cleanName.includes('subform')) {
+          cleanName = `field_${index + 1}`;
+        }
+        
+        // 🎯 SMART AUTO-SIZING based on field type and name
+        let width = 120, height = 20, fieldType = 'text';
+        
+        const lowerName = rawName.toLowerCase();
+        
+        // Checkbox detection
+        if (['individual', 'partnership', 'corporation', 'jointventure', 'other'].some(k => lowerName.includes(k))) {
+          width = 15; height = 15; fieldType = 'checkbox';
+        }
+        // Long text fields
+        else if (['address', 'name', 'construction', 'description'].some(k => lowerName.includes(k))) {
+          width = 200; height = 20; fieldType = 'text';
+        }
+        // Date fields
+        else if (['date', 'bid'].some(k => lowerName.includes(k))) {
+          width = 100; height = 18; fieldType = 'date';
+        }
+        // Percentage/number fields
+        else if (['percent', 'amount', 'number'].some(k => lowerName.includes(k))) {
+          width = 80; height = 18; fieldType = 'number';
+        }
+        
+        // 🧟‍♂️ ZOMBIE DEFENSE: Sanitize API field dimensions
+        let apiWidth = parseFloat(field.width);
+        let apiHeight = parseFloat(field.height);
+        
+        // If API dimensions are crazy large (zombie attack), use our smart defaults
+        if (apiWidth > 500 || apiHeight > 100 || isNaN(apiWidth) || isNaN(apiHeight)) {
+          apiWidth = width;
+          apiHeight = height;
+        }
+        
+        return {
+          id: `field_${Date.now()}_${Math.random().toString(36).substr(2, 9)}_${index}`,
+          name: rawName,
+          cleanName: cleanName.replace(/\\/g, ''),  // 🔥 REMOVE BACKSLASHES!
+          x: field.x || 100 + (index % 3) * 150,
+          y: field.y || 700 - Math.floor(index / 3) * 30,
+          width: apiWidth,  // Use sanitized width (zombie-proof!)
+          height: apiHeight,  // Use sanitized height (zombie-proof!)
+          page: field.page || 1,
+          type: field.type || fieldType
+        };
+      });
+      
+      setVisualFields(visualFieldData);
+      setMessage(`✅ Detected ${fields.length} form fields! Drag the red boxes to adjust positions.`);
       
       console.log('🎯 DETECTED FIELDS COUNT:', fields.length);
-      console.log('🎯 DETECTED FIELD NAMES:', fieldNames);
+      console.log('🎯 VISUAL FIELD DATA:', visualFieldData);
+      
+      // 🧟‍♂️ ZOMBIE DEBUG: Check for page distribution
+      const pageStats = {};
+      visualFieldData.forEach(field => {
+        pageStats[field.page] = (pageStats[field.page] || 0) + 1;
+      });
+      console.log('📄 FIELDS PER PAGE:', pageStats);
+      
+      // 🔥 AUTO-GENERATE CSV FROM DETECTED FIELDS (CLEAN NAMES!)
+      setTimeout(() => {
+        const headers = visualFieldData.map(field => field.cleanName);
+        const sampleRow = visualFieldData.map(field => field.cleanName);
+        const csvContent = [
+          headers.join(','),
+          sampleRow.map(value => `"${value}"`).join(',')
+        ].join('\n');
+        setGeneratedCSV(csvContent);
+      }, 200);
       
       // Check for duplicates
       const duplicates = fieldNames.filter((name, index) => fieldNames.indexOf(name) !== index);
@@ -137,9 +178,8 @@ function PDFCoordinateMapper() {
       
     } catch (error) {
       console.error('Error analyzing PDF:', error);
-      setMessage('❌ Failed to analyze PDF. Using fallback field list.');
-      // Fallback to hardcoded fields if auto-detection fails
-      setDetectedFields(commonFields);
+      setMessage('❌ Failed to analyze PDF. Please try uploading again.');
+      // No more hardcoded fallbacks - we're fully dynamic now!
     } finally {
       setIsAnalyzing(false);
     }
@@ -348,27 +388,103 @@ function PDFCoordinateMapper() {
     setMessage('Field removed');
   };
 
-  // Generate CSV template with field names as values
+  // 🔥 ADD NEW FIELD
+  const addNewField = () => {
+    const newField = {
+      id: `field_${Date.now()}`,
+      name: `new_field_${visualFields.length + 1}`,
+      cleanName: `new_field_${visualFields.length + 1}`,
+      x: 100 + (visualFields.length % 5) * 120,
+      y: 600 - Math.floor(visualFields.length / 5) * 30,
+      width: 120,
+      height: 20,
+      page: currentPage,
+      type: 'text'
+    };
+    
+    setVisualFields(prev => [...prev, newField]);
+    setMessage('✅ New field added! Drag to position it.');
+    
+    // Auto-update CSV
+    setTimeout(() => generateCSVTemplate(), 100);
+  };
+
+  // 🔥 DELETE FIELD
+  const deleteField = (fieldId) => {
+    console.log(`🗑️ DELETING FIELD: ${fieldId}`);
+    
+    setVisualFields(prev => {
+      const beforeCount = prev.length;
+      const filtered = prev.filter(field => field.id !== fieldId);
+      const afterCount = filtered.length;
+      
+      console.log(`📊 DELETE RESULT: ${beforeCount} -> ${afterCount} fields (removed ${beforeCount - afterCount})`);
+      
+      if (beforeCount === afterCount) {
+        console.warn(`⚠️ NO FIELD DELETED! Field ID '${fieldId}' not found`);
+      }
+      
+      return filtered;
+    });
+    
+    setMessage('🗑️ Field deleted!');
+    
+    // Auto-update CSV
+    setTimeout(() => generateCSVTemplate(), 100);
+  };
+
+  // 🔥 RENAME FIELD
+  const renameField = (fieldId) => {
+    const field = visualFields.find(f => f.id === fieldId);
+    if (!field) return;
+    
+    const newName = prompt(`Rename field "${field.cleanName}":`, field.cleanName);
+    if (newName && newName.trim() && newName !== field.cleanName) {
+      setVisualFields(prev => prev.map(f => 
+        f.id === fieldId 
+          ? { ...f, cleanName: newName.trim(), name: newName.trim() }
+          : f
+      ));
+      setMessage(`✅ Field renamed to "${newName.trim()}"!`);
+      
+      // Auto-update CSV
+      setTimeout(() => generateCSVTemplate(), 100);
+    }
+  };
+
+  // Generate CSV template with field names as values (from visual fields)
   const generateCSVTemplate = () => {
-    if (fieldMappings.length === 0) {
+    if (visualFields.length === 0) {
       setGeneratedCSV('');
       return;
     }
 
-    // Create CSV headers from mapped field names
-    const headers = fieldMappings.map(field => field.name);
+    // 🔥 CREATE UNIQUE HEADERS (SAME LOGIC AS FORM ANALYZER!)
+    const rawHeaders = visualFields.map(field => field.cleanName.replace(/\\/g, '')); // 🔥 REMOVE BACKSLASHES!
+    const uniqueHeaders = [];
+    const headerCounts = {};
     
-    // Create sample row with field names as values (for debugging)
-    const sampleRow = fieldMappings.map(field => field.name);
+    rawHeaders.forEach(header => {
+      if (headerCounts[header]) {
+        headerCounts[header]++;
+        uniqueHeaders.push(`${header}_${headerCounts[header]}`);
+      } else {
+        headerCounts[header] = 1;
+        uniqueHeaders.push(header);
+      }
+    });
+    
+    // Create sample row with unique field names as values (for debugging)
+    const sampleRow = uniqueHeaders.map(header => header);
     
     // Generate CSV content
     const csvContent = [
-      headers.join(','),
+      uniqueHeaders.join(','),
       sampleRow.map(value => `"${value}"`).join(',')
     ].join('\n');
     
     setGeneratedCSV(csvContent);
-    setMessage(`✅ Generated CSV template with ${fieldMappings.length} fields!`);
+    setMessage(`✅ Generated CSV template with ${uniqueHeaders.length} unique fields from visual mapping!`);
   };
 
   // Copy CSV to clipboard
@@ -387,24 +503,266 @@ function PDFCoordinateMapper() {
     }
   };
 
-  // Export field mappings as JSON
+  // 🔥 ORIGINAL SMOOTH DRAG HANDLERS (RESTORED!)
+  const handleFieldMouseDown = (e, fieldId) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    setIsDragging(true);
+    setDraggedFieldId(fieldId);
+    
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const canvasRect = canvas.getBoundingClientRect();
+    
+    // Calculate offset from mouse to field center
+    const field = visualFields.find(f => f.id === fieldId);
+    if (!field) return;
+    
+    // Direct mouse to PDF coordinates
+    const rawMouseX = e.clientX - canvasRect.left;
+    const rawMouseY = e.clientY - canvasRect.top;
+    
+    // Convert to PDF coordinates
+    const baseScaleX = canvasRect.width / 612;
+    const baseScaleY = canvasRect.height / 792;
+    const mousePdfX = rawMouseX / baseScaleX;
+    const mousePdfY = (canvasRect.height - rawMouseY) / baseScaleY;
+    
+    // Calculate offset from mouse to field's PDF position
+    const offsetX = mousePdfX - field.x;
+    const offsetY = mousePdfY - field.y;
+    
+    const handleMouseMove = (moveEvent) => {
+      // Direct coordinate calculation
+      const rawMouseX = moveEvent.clientX - canvasRect.left;
+      const rawMouseY = moveEvent.clientY - canvasRect.top;
+      
+      const mousePdfX = rawMouseX / baseScaleX;
+      const mousePdfY = (canvasRect.height - rawMouseY) / baseScaleY;
+      
+      // Calculate new field position by subtracting the offset
+      const pdfX = mousePdfX - offsetX;
+      const pdfY = mousePdfY - offsetY;
+      
+      // Direct React state update
+      setVisualFields(prev => prev.map(field => 
+        field.id === fieldId 
+          ? { 
+              ...field, 
+              x: pdfX,
+              y: pdfY
+            }
+          : field
+      ));
+    };
+    
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      setDraggedFieldId(null);
+      
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      
+      // Auto-update CSV after drag
+      setTimeout(() => generateCSVTemplate(), 100);
+      setMessage('✅ Field moved successfully!');
+    };
+    
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  // 🔍 ZOOM CONTROL FUNCTIONS (FOR WORLD DOMINATION!)
+  const zoomIn = () => {
+    setZoomLevel(prev => Math.min(prev + 0.25, 3));
+    setMessage(`🔍 Zoomed in to ${Math.round((zoomLevel + 0.25) * 100)}%`);
+  };
+
+  const zoomOut = () => {
+    setZoomLevel(prev => Math.max(prev - 0.25, 0.25));
+    setMessage(`🔍 Zoomed out to ${Math.round((zoomLevel - 0.25) * 100)}%`);
+  };
+
+  const resetZoom = () => {
+    setZoomLevel(1);
+    setPanOffset({ x: 0, y: 0 });
+    setMessage('🎯 Zoom reset to 100%');
+  };
+
+  const fitToScreen = () => {
+    setZoomLevel(0.8);
+    setPanOffset({ x: 0, y: 0 });
+    setMessage('📏 Fit to screen');
+  };
+
+  // Mouse wheel zoom (with passive event handling)
+  const handleWheelZoom = (e) => {
+    // Don't preventDefault in passive listener - just handle the zoom
+    const delta = e.deltaY > 0 ? -0.05 : 0.05; // Smaller increments for smoother zoom
+    setZoomLevel(prev => Math.max(0.25, Math.min(3, prev + delta)));
+  };
+
+  // 🖱️ PANNING HANDLERS (FOR PRECISE NAVIGATION!)
+  const handlePanStart = (e) => {
+    // 🚫 PAN DISABLED: No zoom functionality
+    return;
+    
+    const handlePanMove = (moveEvent) => {
+      setPanOffset({
+        x: moveEvent.clientX - startX,
+        y: moveEvent.clientY - startY
+      });
+    };
+    
+    const handlePanEnd = () => {
+      setIsPanning(false);
+      document.removeEventListener('mousemove', handlePanMove);
+      document.removeEventListener('mouseup', handlePanEnd);
+    };
+    
+    document.addEventListener('mousemove', handlePanMove);
+    document.addEventListener('mouseup', handlePanEnd);
+  };
+
+  // 📁 DRAG & DROP HANDLERS (FOR FILE UPLOADS)
+  const handleCanvasDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleCanvasDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const files = Array.from(e.dataTransfer.files);
+    const pdfFile = files.find(file => file.type === 'application/pdf');
+    
+    if (pdfFile) {
+      handleFileUpload({ target: { files: [pdfFile] } });
+      setMessage('📁 PDF dropped successfully!');
+    } else {
+      setMessage('❌ Please drop a PDF file');
+    }
+  };
+
+  // 🔥 RESIZE HANDLERS
+  const handleResizeStart = (e, fieldId, handle) => {
+    e.stopPropagation();
+    e.preventDefault();
+    
+    setIsResizing(true);
+    setResizingFieldId(fieldId);
+    setResizeHandle(handle);
+    
+    const handleMouseMove = (moveEvent) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = 612 / rect.width;
+      const scaleY = 792 / rect.height;
+      
+      // 🚀 SIMPLIFIED: Direct mouse position (no zoom/pan)
+      const canvasMouseX = moveEvent.clientX - rect.left;
+      const canvasMouseY = moveEvent.clientY - rect.top;
+      const mouseX = canvasMouseX * scaleX;
+      const mouseY = (rect.height - canvasMouseY) * scaleY; // Flip Y
+      
+      setVisualFields(prev => prev.map(field => {
+        if (field.id !== fieldId) return field;
+        
+        let newField = { ...field };
+        
+        // Larger minimum sizes for better control
+        const minWidth = 40;
+        const minHeight = 20;
+        
+        // 🔥 FIXED RESIZE DIRECTIONS - NOW INTUITIVE!
+        switch (handle) {
+          case 'se': // 🔥 SOUTHEAST: Drag down-right to expand (CORRECT!)
+            newField.width = Math.max(minWidth, mouseX - field.x);
+            newField.height = Math.max(minHeight, field.y - mouseY + field.height);
+            break;
+          case 'sw': // 🔥 SOUTHWEST: Drag down-left to expand (CORRECT!)
+            const newWidthSW = Math.max(minWidth, field.x + field.width - mouseX);
+            newField.x = field.x + field.width - newWidthSW;
+            newField.width = newWidthSW;
+            newField.height = Math.max(minHeight, field.y - mouseY + field.height);
+            break;
+          case 'ne': // 🔥 NORTHEAST: Drag up-right to expand (FIXED!)
+            newField.width = Math.max(minWidth, mouseX - field.x);
+            const newHeightNE = Math.max(minHeight, mouseY - field.y);
+            newField.y = field.y;
+            newField.height = newHeightNE;
+            break;
+          case 'nw': // 🔥 NORTHWEST: Drag up-left to expand (FIXED!)
+            const newWidthNW = Math.max(minWidth, field.x + field.width - mouseX);
+            const newHeightNW = Math.max(minHeight, mouseY - field.y);
+            newField.x = field.x + field.width - newWidthNW;
+            newField.y = field.y;
+            newField.width = newWidthNW;
+            newField.height = newHeightNW;
+            break;
+        }
+        
+        // Keep within bounds
+        newField.x = Math.max(0, Math.min(612 - newField.width, newField.x));
+        newField.y = Math.max(0, Math.min(792 - newField.height, newField.y));
+        
+        return newField;
+      }));
+    };
+    
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      setResizingFieldId(null);
+      setResizeHandle(null);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      
+      console.log(`🎯 RESIZED FIELD ${fieldId}`);
+      setMessage(`✅ Field resized successfully!`);
+      
+      // 🔥 AUTO-UPDATE CSV WHEN FIELD IS RESIZED
+      setTimeout(() => generateCSVTemplate(), 100);
+    };
+    
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  // Export field mappings as JSON (using visual field data)
   const exportMappings = () => {
-    if (fieldMappings.length === 0) {
-      setMessage('❌ No fields mapped yet');
+    if (visualFields.length === 0) {
+      setMessage('❌ No fields detected yet. Upload a PDF first.');
       return;
     }
 
     const formName = uploadedFile ? uploadedFile.name.replace('.pdf', '') : 'custom-form';
     const formType = formName.toLowerCase().replace(/[^a-z0-9]/g, '_');
     
+    // 🔥 GENERATE SCHEMA FROM VISUAL FIELD DATA (DRAG/RESIZE POSITIONS)
     const schema = {
-      formType: formType,
-      name: `${formName} Manual Mapping`,
-      description: `Manually mapped field coordinates for ${formName}`,
+      formType: formType.toUpperCase(),
+      name: `${formName} Visual Mapping`,
+      description: `Visual field mapping schema for ${formName} (drag/resize positions)`,
       version: "1.0",
       hasFormFields: true,
-      detectedFieldCount: fieldMappings.length,
-      fields: fieldMappings
+      detectedFieldCount: visualFields.length,
+      fields: visualFields.map(field => ({
+        name: field.name,
+        cleanName: field.cleanName,
+        type: field.type === 'checkbox' ? "PDFCheckBox" : "PDFTextField",
+        x: Math.round(field.x * 100) / 100, // Round to 2 decimal places
+        y: Math.round(field.y * 100) / 100,
+        width: Math.round(field.width * 100) / 100,
+        height: Math.round(field.height * 100) / 100,
+        fontSize: field.type === 'checkbox' ? 12 : 10,
+        page: field.page,
+        required: false
+      }))
     };
 
     const blob = new Blob([JSON.stringify(schema, null, 2)], { type: 'application/json' });
@@ -492,6 +850,27 @@ function PDFCoordinateMapper() {
                   </div>
                 </div>
                 
+                {/* 🔥 FIELD MANAGEMENT CONTROLS */}
+                {uploadedFile && (
+                  <div className="p-3 bg-green-900 rounded border border-green-600">
+                    <p className="text-green-100 font-medium mb-2">🛠️ Field Management:</p>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={addNewField}
+                        className="px-3 py-1 bg-green-600 hover:bg-green-500 text-white rounded text-sm transition-colors"
+                        title="Add New Field"
+                      >
+                        ➕ Add Field
+                      </button>
+                      <span className="px-2 py-1 bg-green-800 text-green-200 rounded text-sm">
+                        {visualFields.filter(f => f.page === currentPage).length} fields on page {currentPage}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* 🚫 ZOOM REMOVED: Keeping it simple and bulletproof for perfect field positioning! */}
+
                 {/* Page Navigation */}
                 {uploadedFile && totalPages > 1 && (
                   <div className="p-3 bg-blue-900 rounded border border-blue-600">
@@ -539,7 +918,7 @@ function PDFCoordinateMapper() {
                 </p>
             
             <div className="space-y-2 max-h-64 overflow-y-auto">
-              {(detectedFields.length > 0 ? detectedFields : commonFields).map(fieldName => (
+              {detectedFields.map(fieldName => (
                 <button
                   key={fieldName}
                   onClick={() => startAddingField(fieldName)}
@@ -577,13 +956,13 @@ function PDFCoordinateMapper() {
           {/* Mapped Fields */}
           <div className="bg-gray-700 p-4 rounded">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-bold text-white">Mapped Fields ({fieldMappings.length}):</h3>
-              {fieldMappings.length > 0 && (
+              <h3 className="text-lg font-bold text-white">🎯 Visual Field Mapping ({visualFields.length} fields):</h3>
+              {visualFields.length > 0 && (
                 <button
                   onClick={exportMappings}
                   className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-sm"
                 >
-                  Export JSON 📥
+                  📥 Export Visual Schema
                 </button>
               )}
             </div>
@@ -618,21 +997,147 @@ function PDFCoordinateMapper() {
           <div className="bg-gray-700 p-4 rounded">
             <h3 className="text-lg font-bold text-white mb-4">📄 PDF Canvas (Click to Map Fields)</h3>
             
-            <div className="border border-gray-600 rounded overflow-hidden bg-white">
-              <canvas
-                ref={canvasRef}
-                width={612}
-                height={792}
-                onClick={handleCanvasClick}
-                className={`w-full h-auto ${
-                  isAddingField ? 'cursor-crosshair' : 'cursor-default'
-                } ${!uploadedFile ? 'opacity-50' : ''}`}
-                style={{ 
-                  maxHeight: '800px',
-                  aspectRatio: '612/792',
-                  backgroundColor: uploadedFile ? 'white' : '#f3f4f6'
+            <div 
+              className="border border-gray-600 rounded bg-white relative"
+              style={{ 
+                overflow: 'auto',
+                cursor: 'default',
+                maxHeight: '800px'
+              }}
+            >
+              <div
+                style={{
+                  transform: 'scale(1) translate(0px, 0px)',
+                  transformOrigin: '0 0'
                 }}
-              />
+              >
+                <canvas
+                  ref={canvasRef}
+                  width={612}
+                  height={792}
+                  onClick={handleCanvasClick}
+                  onDragOver={handleCanvasDragOver}
+                  onDrop={handleCanvasDrop}
+                  className={`w-full h-auto ${
+                    isAddingField ? 'cursor-crosshair' : 'cursor-default'
+                  } ${!uploadedFile ? 'opacity-50' : ''}`}
+                  style={{ 
+                    aspectRatio: '612/792',
+                    backgroundColor: uploadedFile ? 'white' : '#f3f4f6',
+                    display: 'block'
+                  }}
+                />
+              
+                {/* 🔥 ORIGINAL SMOOTH DRAG SYSTEM (RESTORED!) */}
+                {visualFields
+                  .filter(field => field.page === currentPage)
+                  .slice(0, 50) // 🧟‍♂️ ZOMBIE PROTECTION: Limit to 50 fields per page
+                  .map((field) => {
+                  const canvas = canvasRef.current;
+                  if (!canvas) return null;
+                  
+                  const rect = canvas.getBoundingClientRect();
+                  const baseScaleX = rect.width / 612;
+                  const baseScaleY = rect.height / 792;
+                  
+                  // Calculate screen positions
+                  const scaleX = baseScaleX;
+                  const scaleY = baseScaleY;
+                  const leftPos = field.x * scaleX;
+                  const topPos = (792 - field.y - field.height) * scaleY;
+                
+                return (
+                  <div
+                    key={field.id}
+                    data-field-id={field.id}
+                    onMouseDown={(e) => !isResizing && handleFieldMouseDown(e, field.id)}
+                    className={`absolute border-2 border-red-500 bg-red-100 bg-opacity-30 cursor-move select-none hover:bg-red-200 hover:bg-opacity-50 transition-all ${
+                      draggedFieldId === field.id ? 'opacity-50 scale-105' : ''
+                    } ${isResizing ? 'pointer-events-none' : ''}`}
+                    style={{
+                      left: leftPos + 'px',
+                      top: topPos + 'px',
+                      width: (field.width * scaleX) + 'px',
+                      height: (field.height * scaleY) + 'px',
+                      fontSize: Math.max(8, field.width * scaleX / 12) + 'px',
+                      color: '#dc2626',
+                      fontWeight: 'bold',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      textAlign: 'center',
+                      lineHeight: '1.1',
+                      padding: '1px',
+                      borderRadius: '3px',
+                      zIndex: 10
+                    }}
+                    title={`${field.name}\nCoordinates: (${field.x.toFixed(1)}, ${field.y.toFixed(1)})\nSize: ${field.width}x${field.height}\nDrag to move!`}
+                  >
+                    <span className="truncate">
+                      {field.cleanName.length > 12 ? field.cleanName.substring(0, 10) + '...' : field.cleanName}
+                    </span>
+                    
+                    {/* 🔥 RESIZE HANDLES */}
+                    <div
+                      className="absolute -top-1 -right-1 w-3 h-3 bg-red-600 border border-white cursor-se-resize hover:bg-red-700"
+                      onMouseDown={(e) => handleResizeStart(e, field.id, 'se')}
+                      title="Drag to resize"
+                      style={{ borderRadius: '50%' }}
+                    />
+                    <div
+                      className="absolute -top-1 -left-1 w-3 h-3 bg-red-600 border border-white cursor-nw-resize hover:bg-red-700"
+                      onMouseDown={(e) => handleResizeStart(e, field.id, 'nw')}
+                      title="Drag to resize"
+                      style={{ borderRadius: '50%' }}
+                    />
+                    <div
+                      className="absolute -top-1 -right-1 w-3 h-3 bg-red-600 border border-white cursor-ne-resize hover:bg-red-700"
+                      onMouseDown={(e) => handleResizeStart(e, field.id, 'ne')}
+                      title="Drag up-right to resize"
+                      style={{ borderRadius: '50%' }}
+                    />
+                    <div
+                      className="absolute -bottom-1 -right-1 w-3 h-3 bg-red-600 border border-white cursor-se-resize hover:bg-red-700"
+                      onMouseDown={(e) => handleResizeStart(e, field.id, 'se')}
+                      title="Drag down-right to resize"
+                      style={{ borderRadius: '50%' }}
+                    />
+                    <div
+                      className="absolute -bottom-1 -left-1 w-3 h-3 bg-red-600 border border-white cursor-sw-resize hover:bg-red-700"
+                      onMouseDown={(e) => handleResizeStart(e, field.id, 'sw')}
+                      title="Drag down-left to resize"
+                      style={{ borderRadius: '50%' }}
+                    />
+                    
+                    {/* 🗑️ DELETE BUTTON */}
+                    <div
+                      className="absolute -top-2 -left-2 w-4 h-4 bg-red-800 border border-white cursor-pointer hover:bg-red-900 flex items-center justify-center text-white text-xs"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteField(field.id);
+                      }}
+                      title="Delete field"
+                      style={{ borderRadius: '50%' }}
+                    >
+                      ×
+                    </div>
+                    
+                    {/* ✏️ RENAME BUTTON */}
+                    <div
+                      className="absolute -bottom-2 -right-2 w-4 h-4 bg-blue-600 border border-white cursor-pointer hover:bg-blue-700 flex items-center justify-center text-white text-xs"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        renameField(field.id);
+                      }}
+                      title="Rename field"
+                      style={{ borderRadius: '50%' }}
+                    >
+                      ✏
+                    </div>
+                  </div>
+                );
+              })}
+              </div>
               
               {!uploadedFile && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -653,7 +1158,11 @@ function PDFCoordinateMapper() {
             <div className="mt-4 text-center text-gray-300 text-sm">
               <p>📐 Canvas represents standard 8.5" × 11" page (612 × 792 points)</p>
               {uploadedFile && (
-                <p className="text-green-300">✅ Click anywhere on the white canvas to map field coordinates</p>
+                <div className="space-y-1">
+                  <p className="text-green-300">✅ Click anywhere on the white canvas to map field coordinates</p>
+                  {/* 🚫 ZOOM INFO REMOVED */}
+                  <p className="text-blue-300">🖱️ Drag fields to reposition • Click to add coordinates</p>
+                </div>
               )}
             </div>
           </div>
@@ -664,19 +1173,22 @@ function PDFCoordinateMapper() {
           <div className="mt-6 bg-gray-700 p-4 rounded">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold text-white">📋 Generated CSV Template</h3>
-              <div className="space-x-2">
+              <div className="flex flex-wrap gap-2">
                 <button
                   onClick={copyCSVToClipboard}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm transition-colors"
                 >
                   📋 Copy CSV
                 </button>
                 <button
                   onClick={generateCSVTemplate}
-                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded text-sm"
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded text-sm transition-colors"
                 >
                   🔄 Refresh CSV
                 </button>
+                <span className="px-3 py-2 bg-gray-700 text-gray-300 rounded text-sm">
+                  {visualFields.length} fields total
+                </span>
               </div>
             </div>
             

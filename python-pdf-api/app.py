@@ -17,6 +17,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 app = Flask(__name__)
 CORS(app)  # Enable CORS for Next.js frontend
 
@@ -210,33 +211,66 @@ def detect_pdf_form_fields(pdf_buffer):
                     logger.info(f"✅ Successfully extracted {len(form_fields)} field positions!")
                     return form_fields
         
-        # STRATEGY 2: Check page-level annotations
-        logger.info("🔍 Checking page annotations...")
-        if "/Annots" in page:
-            annotations = page["/Annots"]
-            logger.info(f"📝 Found {len(annotations)} page annotations")
+        # STRATEGY 2: Check ALL PAGES for annotations (MULTI-PAGE SUPPORT!)
+        logger.info("🔍 Checking ALL page annotations...")
+        form_fields = {}
+        
+        for page_num, page in enumerate(reader.pages):
+            page_number = page_num + 1
+            logger.info(f"📄 Scanning page {page_number} for annotations...")
             
-            form_fields = {}
-            for i, annot in enumerate(annotations):
-                try:
-                    annot_obj = annot.get_object()
-                    annot_type = annot_obj.get("/Subtype", "unknown")
-                    
-                    if annot_type == "/Widget":  # Form field widget
-                        field_name = annot_obj.get("/T", f"widget_{i}")
-                        if "/Rect" in annot_obj:
-                            rect = annot_obj["/Rect"]
-                            x, y, width, height = rect
-                            form_fields[str(field_name)] = (float(x), float(y))
-                            logger.info(f"🎯 Widget '{field_name}': ({x}, {y})")
+            if "/Annots" in page:
+                annotations = page["/Annots"]
+                logger.info(f"📝 Found {len(annotations)} annotations on page {page_number}")
                 
-                except Exception as annot_error:
-                    logger.warning(f"⚠️ Error processing annotation {i}: {annot_error}")
-                    continue
-            
-            if form_fields:
-                logger.info(f"✅ Extracted {len(form_fields)} fields from annotations!")
-                return form_fields
+                for i, annot in enumerate(annotations):
+                    try:
+                        annot_obj = annot.get_object()
+                        annot_type = annot_obj.get("/Subtype", "unknown")
+                        
+                        if annot_type == "/Widget":  # Form field widget
+                            field_name = annot_obj.get("/T", f"widget_p{page_number}_{i}")
+                            if "/Rect" in annot_obj:
+                                rect = annot_obj["/Rect"]
+                                x, y, width, height = rect
+                                
+                                # 🎯 SMART FIELD TYPE & SIZE DETECTION
+                                field_type = "text"
+                                smart_width = width
+                                smart_height = height
+                                
+                                # Detect checkboxes by size and name
+                                if (width <= 20 and height <= 20) or any(keyword in str(field_name).lower() 
+                                    for keyword in ['individual', 'partnership', 'corporation', 'joint', 'other']):
+                                    field_type = "checkbox"
+                                    smart_width = 15
+                                    smart_height = 15
+                                
+                                # Detect long text fields
+                                elif any(keyword in str(field_name).lower() 
+                                    for keyword in ['address', 'name', 'construction', 'description']):
+                                    field_type = "text"
+                                    smart_width = max(200, width)
+                                    smart_height = max(20, height)
+                                
+                                # Detect date/number fields
+                                elif any(keyword in str(field_name).lower() 
+                                    for keyword in ['date', 'percent', 'bid', 'amount']):
+                                    field_type = "number"
+                                    smart_width = max(100, width)
+                                    smart_height = max(18, height)
+                                
+                                # 🔥 INCLUDE PAGE NUMBER, TYPE, AND SMART DIMENSIONS!
+                                form_fields[str(field_name)] = (float(x), float(y), page_number, field_type, smart_width, smart_height)
+                                logger.info(f"🎯 Widget '{field_name}': ({x}, {y}) [{field_type}] {smart_width}x{smart_height} on page {page_number}")
+                    
+                    except Exception as annot_error:
+                        logger.warning(f"⚠️ Error processing annotation {i} on page {page_number}: {annot_error}")
+                        continue
+        
+        if form_fields:
+            logger.info(f"✅ Extracted {len(form_fields)} fields from ALL pages!")
+            return form_fields
         
         # STRATEGY 3: Enhanced text analysis with better pattern recognition
         logger.info("📄 No interactive fields found, using ENHANCED text analysis...")
@@ -344,9 +378,8 @@ def generate_sf24_fields():
         'page2_statea': (500, 470, 2),
     })
     
-    # Add more fields to reach 57 total
-    for i in range(1, 28):  # Add 27 more fields
-        fields[f'page2_field_{i}'] = (72 + (i % 5) * 100, 400 - (i // 5) * 30, 2 + (i // 15))
+    # 🚫 REMOVED: Fake pattern fields that were causing mystery fields on last page
+    # These were just padding to reach 57 total, but we have real detected fields now!
     
     return fields
 
@@ -374,9 +407,8 @@ def generate_sf25_fields():
         'page1_contratedate': (369, 520, 1),
     })
     
-    # Add more fields to reach similar count
-    for i in range(1, 42):  # Add 41 more fields
-        fields[f'page2_field_{i}'] = (72 + (i % 6) * 90, 650 - (i // 6) * 25, 2 + (i // 20))
+    # 🚫 REMOVED: Fake pattern fields that were causing mystery fields
+    # These were just padding, but we have real detected fields now!
     
     return fields
 
@@ -455,18 +487,20 @@ def create_gsa_pdf_overlay(form_data, template_type):
     Create GSA PDF with perfect coordinate overlay using ACTUAL GSA form
     This is where the REAL MAGIC happens!
     """
+    logger.info(f"🚀 CREATE_GSA_PDF_OVERLAY CALLED: template_type='{template_type}', form_data keys: {list(form_data.keys())[:10]}")
     try:
-        # 🚀 AUTO-DISCOVERY: Load the correct GSA PDF based on template type
+        # 🚀 LOCAL FILE ACCESS: Read PDFs directly from filesystem (NO INTERNET!)
         form_mapping = auto_discover_pdf_forms()
         pdf_filename = form_mapping.get(template_type, 'SF24-23a.pdf')  # Fallback to SF24
-        gsa_pdf_url = f"https://bermuda-app.vercel.app/docs/sample-pdfs/{pdf_filename}"
+        local_pdf_path = f"/Users/apple/Desktop/development/bermuda-app/bermuda-app/public/docs/sample-pdfs/{pdf_filename}"
         
-        logger.info(f"Loading GSA PDF from: {gsa_pdf_url}")
-        response = requests.get(gsa_pdf_url, timeout=30)
+        logger.info(f"⚡ Loading GSA PDF LOCALLY: {local_pdf_path}")
         
-        if response.status_code == 200:
-            # Load the actual GSA PDF
-            gsa_pdf_buffer = io.BytesIO(response.content)
+        if os.path.exists(local_pdf_path):
+            # 🚀 SIMPLE & FAST: Direct local file access
+            logger.info(f"📁 Reading PDF from local disk: {pdf_filename}")
+            with open(local_pdf_path, 'rb') as pdf_file:
+                gsa_pdf_buffer = io.BytesIO(pdf_file.read())
             reader = PdfReader(gsa_pdf_buffer)
             writer = PdfWriter()
             
@@ -483,13 +517,13 @@ def create_gsa_pdf_overlay(form_data, template_type):
             
             logger.info(f"Creating overlay for template: {template_type}")
         else:
-            logger.error(f"Failed to load GSA PDF: {response.status_code}")
+            logger.error(f"❌ PDF file not found: {local_pdf_path}")
             # Fallback to blank page
             overlay_buffer = io.BytesIO()
             c = canvas.Canvas(overlay_buffer, pagesize=letter)
             width, height = letter
             c.setFont("Helvetica", 10)
-            c.drawString(50, height - 50, "FALLBACK: Could not load GSA PDF")
+            c.drawString(50, height - 50, f"ERROR: PDF not found: {pdf_filename}")
     
     except Exception as e:
         logger.error(f"Error loading GSA PDF: {str(e)}")
@@ -501,9 +535,18 @@ def create_gsa_pdf_overlay(form_data, template_type):
         c.drawString(50, height - 50, "ERROR: Could not load GSA PDF")
     
     # 🎯 PRIORITIZE MANUAL SCHEMA over auto-detection for ALL GSA forms
+    logger.info(f"🔍 TEMPLATE TYPE CHECK: '{template_type}' - startswith('sf'): {template_type.startswith('sf')}")
+    
+    # Handle bermuda template being sent as sf24_23a (detection issue)
+    if template_type == 'bermuda' and 'datebondex' in form_data:
+        logger.info("🔄 FIXING: bermuda template detected but has GSA fields - treating as sf24_23a")
+        template_type = 'sf24_23a'
+        manual_schema_path = f"/Users/apple/Desktop/development/bermuda-app/bermuda-app/public/docs/pdf-templates/sf24_23a_manual_schema.json"
+    
     if template_type.startswith('sf'):
         # Check for manual schema first
         manual_schema_path = f"/Users/apple/Desktop/development/bermuda-app/bermuda-app/public/docs/pdf-templates/{template_type}_manual_schema.json"
+        logger.info(f"🔍 MANUAL SCHEMA PATH: {manual_schema_path}")
         
         if os.path.exists(manual_schema_path):
             logger.info(f"🎯 USING MANUAL SCHEMA: {manual_schema_path}")
@@ -511,11 +554,28 @@ def create_gsa_pdf_overlay(form_data, template_type):
                 with open(manual_schema_path, 'r') as f:
                     schema = json.load(f)
                     field_positions = {}
+                    duplicate_counter = {}
+                    
+                    # 🚫 DISABLE VISUAL SORTING - IT'S EATING FIELDS!
+                    # Just use the schema as-is with duplicate handling
                     for field in schema.get('fields', []):
-                        field_name = field['name']
+                        # Use cleanName for mapping (what frontend sends)
+                        clean_name = field.get('cleanName', field['name'])
                         x, y, page = field['x'], field['y'], field.get('page', 1)
-                        field_positions[field_name] = (x, y, page)
-                    logger.info(f"✅ Loaded {len(field_positions)} fields from manual schema")
+                        
+                        # 🔥 HANDLE DUPLICATES: Add suffix for duplicate field names
+                        if clean_name in field_positions:
+                            # This is a duplicate - create unique key
+                            if clean_name not in duplicate_counter:
+                                duplicate_counter[clean_name] = 2  # Start at 2 (first was without suffix)
+                            unique_name = f"{clean_name}_{duplicate_counter[clean_name]}"
+                            duplicate_counter[clean_name] += 1
+                            field_positions[unique_name] = (x, y, page)
+                            logger.info(f"🔄 DUPLICATE FIELD: {clean_name} → {unique_name}")
+                        else:
+                            field_positions[clean_name] = (x, y, page)
+                    
+                    logger.info(f"✅ Loaded {len(field_positions)} fields from manual schema (including duplicates)")
             except Exception as e:
                 logger.error(f"❌ Error loading manual schema: {e}")
                 field_positions = detect_pdf_form_fields(gsa_pdf_buffer) if 'gsa_pdf_buffer' in locals() else {}
@@ -579,9 +639,32 @@ def create_gsa_pdf_overlay(form_data, template_type):
         
         # Determine mapping strategy
         if template_type.startswith('sf') and os.path.exists(manual_schema_path):
-            # BULLETPROOF: Manual schema uses direct field mapping
-            field_name_mapping = {name: name for name in field_positions.keys()}
-            logger.info(f"🎯 MANUAL SCHEMA: Direct mapping for {len(field_name_mapping)} fields")
+            # BULLETPROOF: Manual schema with smart CSV field name mapping
+            field_name_mapping = {}
+            
+            # ✅ HYBRID MAPPING: Direct + fallback for the 4 problematic fields
+            # The coordinate mapper generates matching cleanNames, but we need fallback
+            
+            # Temporary fallback mapping for the 4 missing fields
+            fallback_mapping = {
+                'state_of_incorporation': 'state',
+                'percent_of_bid_price': 'percentbid', 
+                'bid_date': 'biddate',
+                'invitation_number': 'invitationno'
+            }
+            
+            for csv_field in form_data.keys():
+                if csv_field in field_positions:
+                    field_name_mapping[csv_field] = csv_field
+                    logger.info(f"✅ MAPPED: {csv_field} found in schema")
+                elif csv_field in fallback_mapping and fallback_mapping[csv_field] in field_positions:
+                    field_name_mapping[csv_field] = fallback_mapping[csv_field]
+                    logger.info(f"✅ FALLBACK MAPPED: {csv_field} → {fallback_mapping[csv_field]}")
+                else:
+                    logger.warning(f"❌ NOT FOUND: {csv_field} missing from schema")
+            
+            logger.info(f"🎯 MANUAL SCHEMA: Smart mapping for {len(field_name_mapping)} fields")
+            logger.info(f"🔍 Available schema fields: {list(field_positions.keys())[:10]}...")  # Show first 10
         else:
             # INTELLIGENT: Auto-detected fields use smart matching
             field_name_mapping = smart_field_matching(form_data.keys(), field_positions.keys())
@@ -591,95 +674,165 @@ def create_gsa_pdf_overlay(form_data, template_type):
         logger.info(f"🎯 Frontend data: {form_data}")
         logger.info(f"🎯 PDF detected: {list(field_positions.keys())}")
         
-        # Count successful mappings
-        successful_mappings = 0
-        
-        # Overlay data at CALIBRATED positions
-        c.setFont("Helvetica", 9)
+        # 🎯 MULTI-PAGE OVERLAY: Group fields by page and create separate overlays
+        fields_by_page = {}
         for frontend_name, pdf_field_name in field_name_mapping.items():
             if frontend_name in form_data and form_data[frontend_name] and pdf_field_name in field_positions:
-                value = str(form_data[frontend_name])
-                # Handle both (x, y) and (x, y, page) coordinate formats
                 coords = field_positions[pdf_field_name]
-                if len(coords) == 3:
-                    x, y, page = coords
-                else:
-                    x, y = coords
-                    page = 1
                 
-                # USE RAW DETECTED COORDINATES - TRUST THE AUTO-DETECTION!
+                # 🔧 SAFETY: Handle coordinate unpacking safely
+                try:
+                    if len(coords) >= 3:
+                        x, y, page = coords[0], coords[1], coords[2]
+                    elif len(coords) == 2:
+                        x, y = coords[0], coords[1]
+                        page = 1  # Default to page 1
+                    else:
+                        logger.warning(f"⚠️ Invalid coordinates for {pdf_field_name}: {coords}")
+                        continue
+                except (IndexError, TypeError) as e:
+                    logger.error(f"❌ Coordinate unpacking error for {pdf_field_name}: {coords} - {e}")
+                    continue
+                
+                if page not in fields_by_page:
+                    fields_by_page[page] = []
+                
+                fields_by_page[page].append({
+                    'frontend_name': frontend_name,
+                    'pdf_field_name': pdf_field_name,
+                    'value': str(form_data[frontend_name]),
+                    'x': x,
+                    'y': y,
+                    'page': page
+                })
+        
+        logger.info(f"📄 Fields grouped by page: {dict((k, len(v)) for k, v in fields_by_page.items())}")
+        
+        # Create overlay for page 1 ONLY (current canvas)
+        successful_mappings = 0
+        c.setFont("Helvetica", 9)
+        
+        if 1 in fields_by_page:
+            logger.info(f"📋 Processing {len(fields_by_page[1])} fields for PAGE 1")
+            for field in fields_by_page[1]:
+                x, y = field['x'], field['y']
+                value = field['value']
+                
+                # 🎯 SIMPLE, RELIABLE POSITIONING - NO CENTERING COMPLEXITY
                 if USE_RAW_COORDINATES:
-                    calibrated_x = x  # Use EXACT detected coordinate
-                    calibrated_y = y  # Use EXACT detected coordinate
+                    calibrated_x = x + 2  # Small right adjustment for text alignment
+                    calibrated_y = y + 6  # Small up adjustment for text alignment
                 else:
-                    # Fallback (shouldn't be used)
                     calibrated_x = x
                     calibrated_y = y
                 
-                logger.info(f"📍 {frontend_name} → {pdf_field_name}: ({x}, {y}) → ({calibrated_x}, {calibrated_y}) = '{value}'")
+                logger.info(f"📍 Page 1: {field['frontend_name']} → {field['pdf_field_name']}: ({x}, {y}) → ({calibrated_x}, {calibrated_y}) = '{value}'")
                 
-                # Handle checkboxes (org_ fields)
-                if frontend_name.startswith('org_'):
+                # Handle checkboxes and text fields
+                if field['frontend_name'].startswith('org_'):
                     if value.upper() in ['X', 'TRUE', '1', 'YES']:
                         c.drawString(calibrated_x, calibrated_y, "X")
-                        logger.info(f"✅ Checkbox {pdf_field_name}: X")
+                        logger.info(f"✅ Checkbox {field['pdf_field_name']}: X")
                 else:
                     # Handle text fields with wrapping
                     if len(value) > 40:
-                        # Split long text
                         lines = [value[i:i+40] for i in range(0, len(value), 40)]
                         for i, line in enumerate(lines[:3]):  # Max 3 lines
                             c.drawString(calibrated_x, calibrated_y - (i * 12), line)
                     else:
                         c.drawString(calibrated_x, calibrated_y, value)
-                    logger.info(f"📝 Text {pdf_field_name}: '{value}'")
+                    logger.info(f"📝 Text {field['pdf_field_name']}: '{value}'")
                 
                 successful_mappings += 1
-            else:
-                # Debug why mapping failed
-                if frontend_name not in form_data:
-                    logger.warning(f"⚠️ Frontend field '{frontend_name}' not in form_data")
-                elif not form_data[frontend_name]:
-                    logger.warning(f"⚠️ Frontend field '{frontend_name}' is empty: '{form_data[frontend_name]}'")
-                elif pdf_field_name not in field_positions:
-                    logger.warning(f"⚠️ PDF field '{pdf_field_name}' not detected in PDF")
+        else:
+            logger.warning("⚠️ No fields found for page 1")
         
-        logger.info(f"✅ Successfully mapped {successful_mappings}/{len(field_name_mapping)} fields")
+        logger.info(f"✅ Successfully mapped {successful_mappings} fields on PAGE 1")
         
-        # Add processing timestamp
-        c.setFont("Helvetica", 6)
-        c.drawString(50, 50, f"Processed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        # TODO: Handle pages 2, 3, 4 with separate overlays (future enhancement)
+        if len(fields_by_page) > 1:
+            other_pages = [p for p in fields_by_page.keys() if p != 1]
+            logger.info(f"📋 NOTE: Fields on pages {other_pages} will be handled in future enhancement")
+        
+        # Timestamp removed per user request
     
     # Save the overlay
     c.save()
     overlay_buffer.seek(0)
     
-    # If we loaded the GSA PDF successfully, merge overlay with it
+    # 🎯 MULTI-PAGE PDF GENERATION: Create overlays for ALL pages
     try:
         if 'reader' in locals() and 'writer' in locals():
-            # Create overlay PDF from canvas
+            # Create overlay PDF from page 1 canvas
             overlay_pdf = PdfReader(overlay_buffer)
-            overlay_page = overlay_pdf.pages[0]
+            page1_overlay = overlay_pdf.pages[0]
             
-            # Merge overlay onto the FIRST page of GSA form (where the data goes)
-            first_page.merge_page(overlay_page)
-            logger.info("✅ Merged data overlay onto GSA page 1")
+            # Process each page of the GSA form
+            for page_num in range(len(reader.pages)):
+                current_page_num = page_num + 1
+                base_page = reader.pages[page_num]
+                
+                if current_page_num == 1:
+                    # Page 1: Merge with existing overlay
+                    base_page.merge_page(page1_overlay)
+                    logger.info("✅ Merged data overlay onto GSA page 1")
+                elif current_page_num in fields_by_page:
+                    # Pages 2, 3, 4: Create new overlays if they have fields
+                    page_fields = fields_by_page[current_page_num]
+                    logger.info(f"📋 Creating overlay for page {current_page_num} with {len(page_fields)} fields")
+                    
+                    # Create new overlay for this page
+                    page_overlay_buffer = io.BytesIO()
+                    page_canvas = canvas.Canvas(page_overlay_buffer, pagesize=letter)
+                    page_canvas.setFont("Helvetica", 9)
+                    
+                    # Add fields for this page
+                    for field in page_fields:
+                        x, y = field['x'], field['y']
+                        value = field['value']
+                        
+                        if USE_RAW_COORDINATES:
+                            calibrated_x = x + 2
+                            calibrated_y = y + 6
+                        else:
+                            calibrated_x = x
+                            calibrated_y = y
+                        
+                        logger.info(f"📍 Page {current_page_num}: {field['frontend_name']} → {field['pdf_field_name']}: ({x}, {y}) = '{value}'")
+                        
+                        # Handle text fields with wrapping
+                        if len(value) > 40:
+                            lines = [value[i:i+40] for i in range(0, len(value), 40)]
+                            for i, line in enumerate(lines[:3]):
+                                page_canvas.drawString(calibrated_x, calibrated_y - (i * 12), line)
+                        else:
+                            page_canvas.drawString(calibrated_x, calibrated_y, value)
+                    
+                    # Save and merge this page's overlay
+                    page_canvas.save()
+                    page_overlay_buffer.seek(0)
+                    page_overlay_pdf = PdfReader(page_overlay_buffer)
+                    page_overlay_page = page_overlay_pdf.pages[0]
+                    base_page.merge_page(page_overlay_page)
+                    logger.info(f"✅ Merged data overlay onto GSA page {current_page_num}")
+                
+                # Add the processed page to writer
+                writer.add_page(base_page)
+                logger.info(f"📋 Added GSA page {current_page_num}")
             
-            # NOW add all pages to writer in correct order
-            writer.add_page(first_page)  # Page 1 with overlay
-            logger.info("📋 Added GSA page 1 (with data overlay)")
-            
-            # Add remaining pages (2, 3, 4)
-            for page_num in range(1, len(reader.pages)):
-                page = reader.pages[page_num]
-                writer.add_page(page)
-                logger.info(f"📋 Added GSA page {page_num + 1}")
-            
-            # Return the complete PDF with all pages in correct order
+            # Return the complete PDF with all pages
             output_buffer = io.BytesIO()
             writer.write(output_buffer)
             output_buffer.seek(0)
-            logger.info(f"📄 Final PDF created with {len(writer.pages)} pages in correct order")
+            
+            # Debug: Check buffer size
+            buffer_size = len(output_buffer.getvalue())
+            logger.info(f"📄 Final PDF created with {len(writer.pages)} pages, buffer size: {buffer_size} bytes")
+            
+            if buffer_size == 0:
+                logger.error("❌ CRITICAL: PDF buffer is empty!")
+                raise Exception("PDF buffer is empty")
+            
             return output_buffer
         else:
             # Return just the overlay (fallback)
@@ -732,32 +885,85 @@ def create_coordinate_mapper():
         c = canvas.Canvas(overlay_buffer, pagesize=letter)
         width, height = letter
         
-        # Draw subtle coordinate grid
-        c.setLineWidth(0.2)
-        c.setStrokeColorRGB(0.8, 0.8, 0.9)  # Very light blue-gray
+        # 🎯 MAGICAL AUTO-VISUAL FIELD MAPPER!
         
-        # Vertical lines every 100 points (less frequent)
+        # First, draw very subtle background grid
+        c.setLineWidth(0.1)
+        c.setStrokeColorRGB(0.95, 0.95, 0.98)  # Ultra light grid
+        
+        # Light grid every 100 points
         for x in range(0, int(width), 100):
             c.line(x, 0, x, height)
-            c.setFont("Helvetica", 5)
-            c.setFillColorRGB(0.6, 0.6, 0.7)  # Light gray text
-            c.drawString(x + 2, height - 8, str(x))
-        
-        # Horizontal lines every 100 points (less frequent)
         for y in range(0, int(height), 100):
             c.line(0, y, width, y)
-            c.setFont("Helvetica", 5)
-            c.setFillColorRGB(0.6, 0.6, 0.7)  # Light gray text
-            c.drawString(3, y + 2, str(y))
         
-        # Corner markers for precise positioning
-        c.setStrokeColorRGB(0.9, 0.5, 0.5)  # Light red
-        c.setLineWidth(0.3)
-        for x in range(50, int(width), 50):
-            for y in range(50, int(height), 50):
-                # Small cross marks
-                c.line(x-2, y, x+2, y)
-                c.line(x, y-2, x, y+2)
+        # 🔥 MAGIC: AUTO-DETECT AND VISUALIZE FORM FIELDS!
+        try:
+            # Reset PDF buffer for field detection
+            pdf_buffer.seek(0)
+            detected_fields = detect_pdf_form_fields(pdf_buffer)
+            
+            logger.info(f"🎯 VISUAL MAPPER: Drawing {len(detected_fields)} detected fields on page {page_number}")
+            
+            # Draw red rectangles around each detected field
+            c.setStrokeColorRGB(1, 0, 0)  # Bright red border
+            c.setFillColorRGB(1, 0.95, 0.95)  # Very light red fill
+            c.setLineWidth(1.5)
+            
+            field_count = 0
+            for field_name, coords in detected_fields.items():
+                if len(coords) == 3:
+                    x, y, field_page = coords
+                else:
+                    x, y = coords
+                    field_page = 1
+                
+                # Only draw fields for the current page
+                if field_page == page_number:
+                    field_count += 1
+                    
+                    # Determine field size based on field type
+                    if any(keyword in field_name.lower() for keyword in ['address', 'name', 'construction']):
+                        width, height = 200, 20
+                    elif any(keyword in field_name.lower() for keyword in ['individual', 'partnership', 'corporation']):
+                        width, height = 15, 15  # Checkboxes
+                    else:
+                        width, height = 120, 18  # Default text fields
+                    
+                    # Draw field rectangle with light fill
+                    c.rect(x, y, width, height, fill=1, stroke=1)
+                    
+                    # Clean field name for display
+                    clean_name = field_name.replace('form1[0].#subform[0].', '').replace('[0]', '')
+                    if len(clean_name) > 15:
+                        clean_name = clean_name[:12] + "..."
+                    
+                    # Add field name label above rectangle
+                    c.setFillColorRGB(0.8, 0, 0)  # Dark red text
+                    c.setFont("Helvetica-Bold", 8)
+                    c.drawString(x, y + height + 3, clean_name)
+                    
+                    # Add coordinates below rectangle
+                    c.setFillColorRGB(0.4, 0.4, 0.4)  # Gray text
+                    c.setFont("Helvetica", 6)
+                    c.drawString(x, y - 8, f"({int(x)}, {int(y)})")
+            
+            logger.info(f"✅ VISUAL MAPPER: Drew {field_count} field rectangles on page {page_number}")
+            
+            # Add title
+            c.setFillColorRGB(0, 0, 0.8)  # Blue title
+            c.setFont("Helvetica-Bold", 12)
+            c.drawString(50, height - 30, f"🎯 AUTO-DETECTED FIELDS - PAGE {page_number} ({field_count} fields)")
+            
+        except Exception as e:
+            logger.error(f"❌ Error in visual field mapping: {str(e)}")
+            # Fallback to basic grid if field detection fails
+            c.setStrokeColorRGB(0.8, 0.8, 0.9)
+            c.setLineWidth(0.2)
+            for x in range(0, int(width), 50):
+                c.line(x, 0, x, height)
+            for y in range(0, int(height), 50):
+                c.line(0, y, width, y)
         
         # Add page number indicator
         c.setFillColorRGB(0, 0, 0)  # Black
@@ -877,20 +1083,60 @@ def analyze_pdf_fields():
         
         logger.info(f"🎯 Found {len(interactive_fields)} interactive fields")
         
+        # 🚀 APPLY VISUAL SORTING TO FORM-ANALYZER TOO!
+        # Convert to list of field objects for sorting
+        field_objects = []
+        for field_name, coords in interactive_fields.items():
+            if len(coords) >= 3:
+                x, y, page = coords[0], coords[1], coords[2]
+            else:
+                x, y, page = coords[0], coords[1], 1
+            
+            field_objects.append({
+                'cleanName': field_name,
+                'x': x,
+                'y': y,
+                'page': page,
+                'coords': coords
+            })
+        
+        # 🎯 SORT BY VISUAL POSITION: Page → Y (top-to-bottom) → X (left-to-right)
+        sorted_field_objects = sorted(
+            field_objects,
+            key=lambda f: (f['page'], -f['y'], f['x'])
+        )
+        logger.info(f"🔄 SORTED {len(sorted_field_objects)} fields by visual position for form-analyzer")
+        
+        # 🔥 REGENERATE FIELD NAMES IN VISUAL ORDER (same logic as manual schema)
+        base_name_counter = {}
+        all_fields = {}
+        
+        for field_obj in sorted_field_objects:
+            original_name = field_obj['cleanName']
+            coords = field_obj['coords']
+            
+            # Extract base name (remove existing suffixes like _2, _3, etc.)
+            base_name = original_name.split('_')[0] if '_' in original_name else original_name
+            
+            # Generate sequential field name based on visual order
+            if base_name not in base_name_counter:
+                base_name_counter[base_name] = 1
+                final_field_name = base_name
+            else:
+                base_name_counter[base_name] += 1
+                final_field_name = f"{base_name}_{base_name_counter[base_name]}"
+            
+            all_fields[final_field_name] = coords
+            logger.info(f"🎯 FORM-ANALYZER VISUAL ORDER: {original_name} → {final_field_name}")
+        
         # Generate additional intelligent fields based on GSA form patterns
         additional_fields = generate_intelligent_gsa_fields(pdf_url)
         
         logger.info(f"🧠 Generated {len(additional_fields)} intelligent pattern fields")
         
-        # SMART COMBINE: Use interactive fields when available, fill gaps with pattern fields
-        all_fields = {}
-        
-        # Start with interactive fields (these are the REAL form fields)
-        all_fields.update(interactive_fields)
-        
         # SMART DEDUPLICATION: Map interactive field names to their semantic meaning
         interactive_semantic_map = {}
-        for field_name in interactive_fields.keys():
+        for field_name in all_fields.keys():
             # Extract semantic meaning from interactive field names
             clean = field_name.lower().replace('form1[0].#subform[0].', '').replace('[0]', '')
             
@@ -951,20 +1197,36 @@ def analyze_pdf_fields():
         # Convert to the format expected by frontend
         fields = []
         for field_name, coords in all_fields.items():
-            if len(coords) == 3:
+            # 🔥 HANDLE ALL COORDINATE FORMATS: (x,y), (x,y,page), or (x,y,page,type,width,height)
+            if len(coords) == 6:
+                x, y, page, field_type, width, height = coords
+            elif len(coords) == 3:
                 x, y, page = coords
+                field_type = 'text'
+                width = 120
+                height = 20
             else:
                 x, y = coords
                 page = 1
+                field_type = 'text'
+                width = 120
+                height = 20
+            
+            # 🎯 SMART TYPE DETECTION if not already set
+            if field_type == 'text' and any(keyword in field_name.lower() 
+                for keyword in ['individual', 'partnership', 'corporation', 'joint', 'other']):
+                field_type = 'checkbox'
+                width = 15
+                height = 15
                 
             fields.append({
                 'name': field_name,
                 'x': float(x),
                 'y': float(y),
                 'page': page,
-                'type': 'checkbox' if any(keyword in field_name.lower() 
-                                        for keyword in ['individual', 'partnership', 'corporation', 'joint', 'other']) 
-                       else 'text'
+                'type': field_type,
+                'width': width,
+                'height': height
             })
         
         logger.info(f"✅ LEGENDARY SUCCESS: Detected {len(fields)} fields!")
@@ -983,5 +1245,5 @@ def analyze_pdf_fields():
 # OCR endpoint removed - using manual coordinate mapping instead
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
+    port = int(os.environ.get('PORT', 5001))  # 🔥 FIXED: Default to port 5001!
     app.run(host='0.0.0.0', port=port, debug=True)

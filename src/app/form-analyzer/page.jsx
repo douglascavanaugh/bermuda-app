@@ -8,6 +8,13 @@ export default function FormAnalyzer() {
   const [detectedFields, setDetectedFields] = useState([]);
   const [generatedCSV, setGeneratedCSV] = useState('');
   const [formType, setFormType] = useState('');
+  const [confirmationMessage, setConfirmationMessage] = useState('');
+
+  // Helper function to show confirmation messages
+  const showConfirmation = (message) => {
+    setConfirmationMessage(message);
+    setTimeout(() => setConfirmationMessage(''), 3000); // Auto-hide after 3 seconds
+  };
 
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
@@ -69,7 +76,7 @@ export default function FormAnalyzer() {
 
   const copyCSV = () => {
     navigator.clipboard.writeText(generatedCSV);
-    alert('CSV copied to clipboard! 📋✨');
+    showConfirmation('✅ CSV copied to clipboard! 📋');
   };
 
   const downloadCSV = () => {
@@ -82,6 +89,7 @@ export default function FormAnalyzer() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    showConfirmation('✅ CSV downloaded successfully! 💾');
   };
 
   return (
@@ -205,6 +213,13 @@ export default function FormAnalyzer() {
                 💾 Download CSV
               </button>
             </div>
+
+            {/* Confirmation Message */}
+            {confirmationMessage && (
+              <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded-lg">
+                {confirmationMessage}
+              </div>
+            )}
 
             <div className="bg-gray-50 p-4 rounded-lg border">
               <pre className="text-sm text-gray-700 whitespace-pre-wrap overflow-x-auto">

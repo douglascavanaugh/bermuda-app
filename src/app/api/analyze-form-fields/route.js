@@ -36,12 +36,15 @@ export async function POST(request) {
 
     const analysisResult = await response.json();
     
-    // Extract clean field names and generate CSV
+    // Extract clean field names and generate CSV with enhanced data
     const fields = analysisResult.fields.map(field => ({
       originalName: field.name,
       cleanName: extractCleanFieldName(field.name),
       x: field.x,
       y: field.y,
+      width: field.width,   // Include width from Python API
+      height: field.height, // Include height from Python API
+      page: field.page,     // Include page number
       type: field.type || 'text'
     }));
 

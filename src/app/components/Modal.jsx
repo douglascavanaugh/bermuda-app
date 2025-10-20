@@ -8,7 +8,7 @@ function Modal({ show, onClose, onSelect }) {
   const menuItems = [
     { key: 'A', title: 'BERMUDA', view: 'BERMUDA' },
     { key: 'B', title: 'HAWAII', view: 'HAWAII' },
-    { key: 'C', title: 'TBD', view: 'TBD' },
+    { key: 'C', title: 'SPC', view: 'SPC' },
     { key: 'D', title: 'TBD', view: 'TBD' },
     { key: 'E', title: 'TBD', view: 'TBD' },
     { key: 'F', title: 'TBD', view: 'TBD' },

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Modal from './components/Modal';
 import BermudaForm from './components/Bermuda';
 import HawaiiForm from './components/Hawaii';
+import SPCForm from './components/SPC';
 
 export default function Home() {
   const [showModal, setShowModal] = useState(false);
@@ -35,6 +36,9 @@ export default function Home() {
     }
     if (currentView === 'HAWAII') {
       return <HawaiiForm />;
+    }
+    if (currentView === 'SPC') {
+      return <SPCForm />;
     }
     if (selectedSection) {
       return (
