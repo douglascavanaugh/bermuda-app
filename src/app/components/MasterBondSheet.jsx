@@ -155,6 +155,13 @@ export default function MasterBondSheet({ isProduction = false }) {
       }
     });
 
+    // 🎖️ SSN Format Validation - must be exactly 9 digits (XXX-XX-XXXX)
+    const ssnDigits = formData.socialSecurityNumber.replace(/\D/g, '');
+    if (ssnDigits.length !== 9) {
+      newErrors.socialSecurityNumber = `SSN must be 9 digits (currently ${ssnDigits.length})`;
+      isValid = false;
+    }
+
     setErrors(newErrors);
     return isValid;
   };
@@ -614,6 +621,12 @@ export default function MasterBondSheet({ isProduction = false }) {
     // dateBondExecuted is NOT required - will default to "Open" if empty
     if (!formData.courtCaseNumber.trim()) newErrors.courtCaseNumber = 'Required';
     if (!formData.stateOfBirth) newErrors.stateOfBirth = 'Required';
+    
+    // 🎖️ SSN Format Validation - must be exactly 9 digits
+    const ssnDigits = formData.socialSecurityNumber.replace(/\D/g, '');
+    if (ssnDigits.length !== 9) {
+      newErrors.socialSecurityNumber = `SSN must be 9 digits (currently ${ssnDigits.length})`;
+    }
     
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
