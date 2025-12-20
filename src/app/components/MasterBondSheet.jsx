@@ -163,7 +163,7 @@ export default function MasterBondSheet({ isProduction = false }) {
   // 🎖️ UPDATED: County is now separate line 13, all fields shifted
   const PASTE_FIELD_MAP = [
     'clientFullName',           // 1
-    'dateBondExecuted',         // 2  ⚠️ REQUIRED
+    'dateBondExecuted',         // 2  (optional → "Open")
     'courtCaseNumber',          // 3
     'pastConvictionsCaseNumbers', // 4
     'birthCertificateNumber',   // 5
@@ -608,10 +608,10 @@ export default function MasterBondSheet({ isProduction = false }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    // Basic validation
+    // Basic validation (Date Bond Executed is optional - defaults to "Open")
     const newErrors = {};
     if (!formData.clientFullName.trim()) newErrors.clientFullName = 'Required';
-    if (!formData.dateBondExecuted) newErrors.dateBondExecuted = 'Required';
+    // dateBondExecuted is NOT required - will default to "Open" if empty
     if (!formData.courtCaseNumber.trim()) newErrors.courtCaseNumber = 'Required';
     if (!formData.stateOfBirth) newErrors.stateOfBirth = 'Required';
     
@@ -895,7 +895,7 @@ export default function MasterBondSheet({ isProduction = false }) {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="relative">
-                <label className="block text-gray-300 text-sm mb-1">Date Bond Executed *</label>
+                <label className="block text-gray-300 text-sm mb-1">Date Bond Executed <span className="text-gray-500 text-xs">(optional → "Open")</span></label>
                 <input
                   type="date"
                   name="dateBondExecuted"
