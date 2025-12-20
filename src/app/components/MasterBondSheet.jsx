@@ -126,7 +126,7 @@ export default function MasterBondSheet({ isProduction = false }) {
     stateOfBirth: 'State of Birth is required',
     dateOfBirth: 'Date of Birth is required',
     uccTrustNumber: 'UCC Trust # is required',
-    socialSecurityNumber: 'Social Security # is required',
+    socialSecurityNumber: 'Social Security # is required (XXX-XX-XXXX)',
     ssnBackNumber: 'SSN Back Number is required',
     thirdPartyAddress: 'Third Party Address is required',
     thirdPartyCity: 'Third Party City is required',
