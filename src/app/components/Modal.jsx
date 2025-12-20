@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from 'react';
+import Link from 'next/link';
 
 function Modal({ show, onClose, onSelect }) {
   if (!show) return null;
@@ -9,10 +10,10 @@ function Modal({ show, onClose, onSelect }) {
     { key: 'A', title: 'BERMUDA', view: 'BERMUDA' },
     { key: 'B', title: 'HAWAII', view: 'HAWAII' },
     { key: 'C', title: 'SPC', view: 'SPC' },
-    { key: 'D', title: 'TBD', view: 'TBD' },
-    { key: 'E', title: 'TBD', view: 'TBD' },
-    { key: 'F', title: 'TBD', view: 'TBD' },
-    { key: 'G', title: 'TBD', view: 'TBD' },
+    { key: 'D', title: 'MASTER BOND SHEET', view: 'MASTER_BOND_SHEET' },
+    { key: 'E', title: 'PACKAGE BATCH PROCESSOR', link: '/package-batch-processor' },
+    { key: 'F', title: 'SINGLE FORM BATCH', link: '/batch-processor' },
+    { key: 'G', title: 'COORDINATE MAPPER', link: '/coordinate-mapper' },
     { key: 'H', title: 'TBD', view: 'TBD' },
     { key: 'I', title: 'TBD', view: 'TBD' },
   ];
@@ -36,13 +37,23 @@ function Modal({ show, onClose, onSelect }) {
         
         <div className="space-y-2">
           {menuItems.map(item => (
-            <div
-              key={item.key}
-              onClick={() => handleSelect(item)}
-              className="text-gray-700 font-mono hover:text-gray-300 cursor-pointer"
-            >
-              {item.key}. {item.title}
-            </div>
+            item.link ? (
+              <Link
+                key={item.key}
+                href={item.link}
+                className="block text-gray-700 font-mono hover:text-blue-600 cursor-pointer"
+              >
+                {item.key}. {item.title}
+              </Link>
+            ) : (
+              <div
+                key={item.key}
+                onClick={() => handleSelect(item)}
+                className="text-gray-700 font-mono hover:text-gray-300 cursor-pointer"
+              >
+                {item.key}. {item.title}
+              </div>
+            )
           ))}
         </div>
 

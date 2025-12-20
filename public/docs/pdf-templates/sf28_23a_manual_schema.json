@@ -1,0 +1,130 @@
+{
+  "formType": "SF28_23A",
+  "name": "SF28-23a Visual Mapping",
+  "description": "Visual field mapping schema for SF28-23a (drag/resize positions)",
+  "version": "1.0",
+  "hasFormFields": true,
+  "detectedFieldCount": 10,
+  "fields": [
+    {
+      "name": "County[0]",
+      "cleanName": "county",
+      "type": "PDFTextField",
+      "x": 304.19,
+      "y": 701.61,
+      "width": 257.38,
+      "height": 20,
+      "fontSize": 10,
+      "page": 1,
+      "required": false
+    },
+    {
+      "name": "State[0]",
+      "cleanName": "state",
+      "type": "PDFTextField",
+      "x": 21.67,
+      "y": 700.88,
+      "width": 262.53,
+      "height": 20,
+      "fontSize": 10,
+      "page": 1,
+      "required": false
+    },
+    {
+      "name": "Name[0]",
+      "cleanName": "name",
+      "type": "PDFTextField",
+      "x": 21.68,
+      "y": 455.7,
+      "width": 267.25,
+      "height": 20,
+      "fontSize": 10,
+      "page": 1,
+      "required": false
+    },
+    {
+      "name": "TypeOccp[0]",
+      "cleanName": "typeoccp",
+      "type": "PDFTextField",
+      "x": 21.68,
+      "y": 393.81,
+      "width": 267.25,
+      "height": 34.93,
+      "fontSize": 10,
+      "page": 1,
+      "required": false
+    },
+    {
+      "name": "BrokAdd[0]",
+      "cleanName": "brokadd",
+      "type": "PDFTextField",
+      "x": 331.48,
+      "y": 281.39,
+      "width": 239.55,
+      "height": 76.43,
+      "fontSize": 10,
+      "page": 1,
+      "required": false
+    },
+    {
+      "name": "Employer[0]",
+      "cleanName": "employer",
+      "type": "PDFTextField",
+      "x": 23.97,
+      "y": 277.83,
+      "width": 265.75,
+      "height": 63.45,
+      "fontSize": 10,
+      "page": 1,
+      "required": false
+    },
+    {
+      "name": "realest1",
+      "cleanName": "realest1",
+      "type": "PDFTextField",
+      "x": 42.23,
+      "y": 649.14,
+      "width": 533.52,
+      "height": 42,
+      "fontSize": 10,
+      "page": 2,
+      "required": false
+    },
+    {
+      "name": "Encumb[0]",
+      "cleanName": "encumb",
+      "type": "PDFTextField",
+      "x": 37.56,
+      "y": 287.98,
+      "width": 543.71,
+      "height": 75.36,
+      "fontSize": 10,
+      "page": 2,
+      "required": false
+    },
+    {
+      "name": "Bonds[0]",
+      "cleanName": "bonds",
+      "type": "PDFTextField",
+      "x": 43.54,
+      "y": 640.37,
+      "width": 545.61,
+      "height": 78.35,
+      "fontSize": 10,
+      "page": 3,
+      "required": false
+    },
+    {
+      "name": "realest2",
+      "cleanName": "realest2",
+      "type": "PDFTextField",
+      "x": 45.25,
+      "y": 593.27,
+      "width": 532.08,
+      "height": 43.5,
+      "fontSize": 10,
+      "page": 2,
+      "required": false
+    }
+  ]
+}

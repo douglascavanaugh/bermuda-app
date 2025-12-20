@@ -1,0 +1,130 @@
+{
+  "formType": "SF275_23A",
+  "name": "SF275-23a Visual Mapping",
+  "description": "Visual field mapping schema for SF275-23a (drag/resize positions)",
+  "version": "1.0",
+  "hasFormFields": true,
+  "detectedFieldCount": 10,
+  "fields": [
+    {
+      "name": "DateExecuted[0]",
+      "cleanName": "dateexecuted",
+      "type": "PDFTextField",
+      "x": 370.34,
+      "y": 688.96,
+      "width": 180.19,
+      "height": 20,
+      "fontSize": 10,
+      "page": 1,
+      "required": false
+    },
+    {
+      "name": "DirectWritingCompany[0]",
+      "cleanName": "directwritingcompany",
+      "type": "PDFTextField",
+      "x": 24.1,
+      "y": 659.07,
+      "width": 308.17,
+      "height": 55.71,
+      "fontSize": 10,
+      "page": 1,
+      "required": false
+    },
+    {
+      "name": "StateOfIncorporation[0]",
+      "cleanName": "stateofincorporation",
+      "type": "PDFCheckBox",
+      "x": 370.34,
+      "y": 658.34,
+      "width": 180.98,
+      "height": 20,
+      "fontSize": 12,
+      "page": 1,
+      "required": false
+    },
+    {
+      "name": "DateExecuted2[0]",
+      "cleanName": "dateexecuted2",
+      "type": "PDFTextField",
+      "x": 370.34,
+      "y": 580.96,
+      "width": 179.41,
+      "height": 20,
+      "fontSize": 10,
+      "page": 1,
+      "required": false
+    },
+    {
+      "name": "ReinsuringCompany[0]",
+      "cleanName": "reinsuringcompany",
+      "type": "PDFTextField",
+      "x": 24.08,
+      "y": 549.29,
+      "width": 309.77,
+      "height": 68.56,
+      "fontSize": 10,
+      "page": 1,
+      "required": false
+    },
+    {
+      "name": "DateOfBond[0]",
+      "cleanName": "dateofbond",
+      "type": "PDFTextField",
+      "x": 306.07,
+      "y": 469.09,
+      "width": 94.76,
+      "height": 20,
+      "fontSize": 10,
+      "page": 1,
+      "required": false
+    },
+    {
+      "name": "BondNumber[0]",
+      "cleanName": "bondnumber",
+      "type": "PDFTextField",
+      "x": 408.47,
+      "y": 469.14,
+      "width": 141.28,
+      "height": 20,
+      "fontSize": 10,
+      "page": 1,
+      "required": false
+    },
+    {
+      "name": "Principal[0]",
+      "cleanName": "principal",
+      "type": "PDFTextField",
+      "x": 305.09,
+      "y": 368.16,
+      "width": 246.24,
+      "height": 77.92,
+      "fontSize": 10,
+      "page": 1,
+      "required": false
+    },
+    {
+      "name": "DescriptionOfBond[0]",
+      "cleanName": "descriptionofbond",
+      "type": "PDFTextField",
+      "x": 24.81,
+      "y": 334.69,
+      "width": 272.78,
+      "height": 109.03,
+      "fontSize": 10,
+      "page": 1,
+      "required": false
+    },
+    {
+      "name": "penalsum",
+      "cleanName": "penalsum",
+      "type": "PDFTextField",
+      "x": 332.91,
+      "y": 498.24,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 1,
+      "required": false
+    }
+  ]
+}

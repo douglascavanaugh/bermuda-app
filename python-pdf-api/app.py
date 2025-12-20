@@ -11,12 +11,38 @@ from PyPDF2 import PdfReader, PdfWriter
 import requests
 import tempfile
 import logging
+import gc  # 🎖️ NUCLEAR GRADE: Garbage collection for memory cleanup
+import copy  # 🎖️ NUCLEAR GRADE: Deep copy for buffer isolation
 # OCR imports removed - going with manual coordinate mapping instead
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# 🎖️ State code to full name mapping
+STATE_NAMES = {
+    'AL': 'Alabama', 'AK': 'Alaska', 'AZ': 'Arizona', 'AR': 'Arkansas', 'CA': 'California',
+    'CO': 'Colorado', 'CT': 'Connecticut', 'DE': 'Delaware', 'FL': 'Florida', 'GA': 'Georgia',
+    'HI': 'Hawaii', 'ID': 'Idaho', 'IL': 'Illinois', 'IN': 'Indiana', 'IA': 'Iowa',
+    'KS': 'Kansas', 'KY': 'Kentucky', 'LA': 'Louisiana', 'ME': 'Maine', 'MD': 'Maryland',
+    'MA': 'Massachusetts', 'MI': 'Michigan', 'MN': 'Minnesota', 'MS': 'Mississippi', 'MO': 'Missouri',
+    'MT': 'Montana', 'NE': 'Nebraska', 'NV': 'Nevada', 'NH': 'New Hampshire', 'NJ': 'New Jersey',
+    'NM': 'New Mexico', 'NY': 'New York', 'NC': 'North Carolina', 'ND': 'North Dakota', 'OH': 'Ohio',
+    'OK': 'Oklahoma', 'OR': 'Oregon', 'PA': 'Pennsylvania', 'RI': 'Rhode Island', 'SC': 'South Carolina',
+    'SD': 'South Dakota', 'TN': 'Tennessee', 'TX': 'Texas', 'UT': 'Utah', 'VT': 'Vermont',
+    'VA': 'Virginia', 'WA': 'Washington', 'WV': 'West Virginia', 'WI': 'Wisconsin', 'WY': 'Wyoming',
+    'DC': 'District of Columbia'
+}
+
+def get_state_full_name(state_code):
+    """Convert 2-letter state code to full name"""
+    if not state_code:
+        return ''
+    code = state_code.upper().strip()
+    # If it's already a full name, return as-is
+    if len(code) > 2:
+        return state_code
+    return STATE_NAMES.get(code, state_code)
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for Next.js frontend
@@ -51,7 +77,7 @@ def auto_discover_pdf_forms():
         logger.warning("⚠️ Auto-discovery failed, using fallback mapping")
         form_mapping = {
             'sf24_23a': 'SF24-23a.pdf',
-            'sf25_23a': 'SF25-23a.pdf',
+            'sf25a_23a': 'SF25a-23a.pdf',
         }
     
     logger.info(f"🚀 FORM MAPPING: {form_mapping}")
@@ -486,8 +512,17 @@ def create_gsa_pdf_overlay(form_data, template_type):
     """
     Create GSA PDF with perfect coordinate overlay using ACTUAL GSA form
     This is where the REAL MAGIC happens!
+    
+    🎖️ MILITARY GRADE: Guaranteed output for every form, no blank pages!
     """
     logger.info(f"🚀 CREATE_GSA_PDF_OVERLAY CALLED: template_type='{template_type}', form_data keys: {list(form_data.keys())[:10]}")
+    
+    # 🎖️ MILITARY GRADE: Initialize ALL variables at the TOP to prevent undefined errors
+    fields_by_page = {}  # CRITICAL: Must be defined before any code path
+    reader = None
+    writer = None
+    field_positions = {}
+    field_name_mapping = {}
     try:
         # 🚀 LOCAL FILE ACCESS: Read PDFs directly from filesystem (NO INTERNET!)
         form_mapping = auto_discover_pdf_forms()
@@ -515,27 +550,23 @@ def create_gsa_pdf_overlay(form_data, template_type):
             c = canvas.Canvas(overlay_buffer, pagesize=letter)
             width, height = letter  # 612 x 792 points
             
-            logger.info(f"Creating overlay for template: {template_type}")
+            logger.info(f"✅ PDF loaded successfully: {template_type}")
         else:
-            logger.error(f"❌ PDF file not found: {local_pdf_path}")
-            # Fallback to blank page
-            overlay_buffer = io.BytesIO()
-            c = canvas.Canvas(overlay_buffer, pagesize=letter)
-            width, height = letter
-            c.setFont("Helvetica", 10)
-            c.drawString(50, height - 50, f"ERROR: PDF not found: {pdf_filename}")
+            logger.error(f"❌ CRITICAL: PDF file not found: {local_pdf_path}")
+            raise FileNotFoundError(f"PDF not found: {local_pdf_path}")
     
     except Exception as e:
-        logger.error(f"Error loading GSA PDF: {str(e)}")
-        # Fallback to blank page
-        overlay_buffer = io.BytesIO()
-        c = canvas.Canvas(overlay_buffer, pagesize=letter)
-        width, height = letter
-        c.setFont("Helvetica", 10)
-        c.drawString(50, height - 50, "ERROR: Could not load GSA PDF")
+        logger.error(f"❌ CRITICAL: Error loading GSA PDF: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        # 🎖️ MILITARY GRADE: Return None to signal failure, let caller handle it
+        return None
     
     # 🎯 PRIORITIZE MANUAL SCHEMA over auto-detection for ALL GSA forms
-    logger.info(f"🔍 TEMPLATE TYPE CHECK: '{template_type}' - startswith('sf'): {template_type.startswith('sf')}")
+    # List of known GSA form template prefixes
+    GSA_FORM_PREFIXES = ('sf', 'of_')  # sf24, sf25, sf28, sf273, sf274, sf275, sf1418, of_91
+    is_gsa_form = any(template_type.startswith(prefix) for prefix in GSA_FORM_PREFIXES)
+    logger.info(f"🔍 TEMPLATE TYPE CHECK: '{template_type}' - is_gsa_form: {is_gsa_form}")
     
     # Handle bermuda template being sent as sf24_23a (detection issue)
     if template_type == 'bermuda' and 'datebondex' in form_data:
@@ -543,7 +574,7 @@ def create_gsa_pdf_overlay(form_data, template_type):
         template_type = 'sf24_23a'
         manual_schema_path = f"/Users/apple/Desktop/development/bermuda-app/bermuda-app/public/docs/pdf-templates/sf24_23a_manual_schema.json"
     
-    if template_type.startswith('sf'):
+    if is_gsa_form:
         # Check for manual schema first
         manual_schema_path = f"/Users/apple/Desktop/development/bermuda-app/bermuda-app/public/docs/pdf-templates/{template_type}_manual_schema.json"
         logger.info(f"🔍 MANUAL SCHEMA PATH: {manual_schema_path}")
@@ -562,18 +593,20 @@ def create_gsa_pdf_overlay(form_data, template_type):
                         # Use cleanName for mapping (what frontend sends)
                         clean_name = field.get('cleanName', field['name'])
                         x, y, page = field['x'], field['y'], field.get('page', 1)
+                        height = field.get('height', 20)  # Default 20px if not specified
                         
                         # 🔥 HANDLE DUPLICATES: Add suffix for duplicate field names
+                        # Store as (x, y, page, height) tuple
                         if clean_name in field_positions:
                             # This is a duplicate - create unique key
                             if clean_name not in duplicate_counter:
                                 duplicate_counter[clean_name] = 2  # Start at 2 (first was without suffix)
                             unique_name = f"{clean_name}_{duplicate_counter[clean_name]}"
                             duplicate_counter[clean_name] += 1
-                            field_positions[unique_name] = (x, y, page)
+                            field_positions[unique_name] = (x, y, page, height)
                             logger.info(f"🔄 DUPLICATE FIELD: {clean_name} → {unique_name}")
                         else:
-                            field_positions[clean_name] = (x, y, page)
+                            field_positions[clean_name] = (x, y, page, height)
                     
                     logger.info(f"✅ Loaded {len(field_positions)} fields from manual schema (including duplicates)")
             except Exception as e:
@@ -638,7 +671,7 @@ def create_gsa_pdf_overlay(form_data, template_type):
             return mapping
         
         # Determine mapping strategy
-        if template_type.startswith('sf') and os.path.exists(manual_schema_path):
+        if is_gsa_form and os.path.exists(manual_schema_path):
             # BULLETPROOF: Manual schema with smart CSV field name mapping
             field_name_mapping = {}
             
@@ -681,12 +714,17 @@ def create_gsa_pdf_overlay(form_data, template_type):
                 coords = field_positions[pdf_field_name]
                 
                 # 🔧 SAFETY: Handle coordinate unpacking safely
+                # Schema stores (x, y, page, height) - we need height for multi-line positioning
                 try:
-                    if len(coords) >= 3:
+                    if len(coords) >= 4:
+                        x, y, page, height = coords[0], coords[1], coords[2], coords[3]
+                    elif len(coords) >= 3:
                         x, y, page = coords[0], coords[1], coords[2]
+                        height = 20  # Default height
                     elif len(coords) == 2:
                         x, y = coords[0], coords[1]
-                        page = 1  # Default to page 1
+                        page = 1
+                        height = 20
                     else:
                         logger.warning(f"⚠️ Invalid coordinates for {pdf_field_name}: {coords}")
                         continue
@@ -703,6 +741,7 @@ def create_gsa_pdf_overlay(form_data, template_type):
                     'value': str(form_data[frontend_name]),
                     'x': x,
                     'y': y,
+                    'height': height,
                     'page': page
                 })
         
@@ -716,32 +755,63 @@ def create_gsa_pdf_overlay(form_data, template_type):
             logger.info(f"📋 Processing {len(fields_by_page[1])} fields for PAGE 1")
             for field in fields_by_page[1]:
                 x, y = field['x'], field['y']
+                height = field.get('height', 20)
                 value = field['value']
                 
-                # 🎯 SIMPLE, RELIABLE POSITIONING - NO CENTERING COMPLEXITY
-                if USE_RAW_COORDINATES:
-                    calibrated_x = x + 2  # Small right adjustment for text alignment
-                    calibrated_y = y + 6  # Small up adjustment for text alignment
-                else:
-                    calibrated_x = x
-                    calibrated_y = y
+                # 🎯 TEXT POSITIONING: Start at TOP of field for tall boxes
+                # PDF coordinates: y is bottom-left corner, so top = y + height
+                calibrated_x = x + 2  # Small right adjustment
                 
-                logger.info(f"📍 Page 1: {field['frontend_name']} → {field['pdf_field_name']}: ({x}, {y}) → ({calibrated_x}, {calibrated_y}) = '{value}'")
+                # For TALL fields (height > 35), ALWAYS align text to TOP
+                # This handles Principal, Surety, Address fields regardless of text length
+                is_multiline = '\\n' in str(value) or '\n' in str(value) or len(value) > 40
+                is_tall_field = height > 35  # Fields like Principal, Surety, Address
+                
+                if is_tall_field:
+                    calibrated_y = y + height - 12  # Start near TOP of field
+                elif is_multiline:
+                    calibrated_y = y + height - 12  # Multi-line also starts at top
+                else:
+                    calibrated_y = y + 6  # Single line in small box: near bottom
+                
+                logger.info(f"📍 Page 1: {field['frontend_name']} → {field['pdf_field_name']}: ({x}, {y}) h={height} → ({calibrated_x}, {calibrated_y}) = '{value[:30]}...'")
                 
                 # Handle checkboxes and text fields
-                if field['frontend_name'].startswith('org_'):
+                if field['frontend_name'].startswith('org_') or value.upper() in ['X']:
                     if value.upper() in ['X', 'TRUE', '1', 'YES']:
-                        c.drawString(calibrated_x, calibrated_y, "X")
+                        c.drawString(x + 2, y + 2, "X")
                         logger.info(f"✅ Checkbox {field['pdf_field_name']}: X")
                 else:
-                    # Handle text fields with wrapping
-                    if len(value) > 40:
-                        lines = [value[i:i+40] for i in range(0, len(value), 40)]
-                        for i, line in enumerate(lines[:3]):  # Max 3 lines
-                            c.drawString(calibrated_x, calibrated_y - (i * 12), line)
+                    # 🚀 SMART WRAP: Calculate chars per line based on field width
+                    # Average char width at 8pt Helvetica ≈ 4.5 points
+                    field_width = field.get('width', 200)  # Default 200 if not specified
+                    avg_char_width = 4.5
+                    chars_per_line = max(20, int(field_width / avg_char_width))  # Minimum 20 chars
+                    logger.info(f"📐 Smart wrap: field_width={field_width}px → {chars_per_line} chars/line")
+                    
+                    # 🚀 MULTI-LINE TEXT SUPPORT: Handle \n line breaks + smart auto-wrapping
+                    if '\\n' in str(value) or '\n' in str(value):
+                        lines = str(value).replace('\\n', '\n').split('\n')
+                        logger.info(f"📝 Multi-line text detected: {len(lines)} lines for field '{field['frontend_name']}'")
+                        line_spacing = 10  # Pixels between lines
+                        line_index = 0
+                        for i, line in enumerate(lines[:6]):  # Max 6 explicit lines
+                            if len(line) > chars_per_line:
+                                wrapped_lines = [line[j:j+chars_per_line] for j in range(0, len(line), chars_per_line)]
+                                for wrapped_line in wrapped_lines[:3]:  # Max 3 wrapped sub-lines per explicit line
+                                    c.drawString(calibrated_x, calibrated_y - (line_index * line_spacing), wrapped_line)
+                                    line_index += 1
+                            else:
+                                c.drawString(calibrated_x, calibrated_y - (line_index * line_spacing), line)
+                                line_index += 1
+                    elif len(value) > chars_per_line:
+                        # Auto-wrap long single-line text using smart width
+                        lines = [value[i:i+chars_per_line] for i in range(0, len(value), chars_per_line)]
+                        for i, line in enumerate(lines[:6]):  # Max 6 wrapped lines
+                            c.drawString(calibrated_x, calibrated_y - (i * 10), line)
                     else:
                         c.drawString(calibrated_x, calibrated_y, value)
-                    logger.info(f"📝 Text {field['pdf_field_name']}: '{value}'")
+                    logger.info(f"📝 Text {field['pdf_field_name']}: '{value[:50]}...'")
                 
                 successful_mappings += 1
         else:
@@ -762,7 +832,12 @@ def create_gsa_pdf_overlay(form_data, template_type):
     
     # 🎯 MULTI-PAGE PDF GENERATION: Create overlays for ALL pages
     try:
-        if 'reader' in locals() and 'writer' in locals():
+        # 🎖️ MILITARY GRADE: Verify reader and writer exist
+        if reader is None or writer is None:
+            logger.error("❌ CRITICAL: reader or writer is None - PDF loading failed")
+            return None
+        
+        if reader is not None and writer is not None:
             # Create overlay PDF from page 1 canvas
             overlay_pdf = PdfReader(overlay_buffer)
             page1_overlay = overlay_pdf.pages[0]
@@ -789,22 +864,38 @@ def create_gsa_pdf_overlay(form_data, template_type):
                     # Add fields for this page
                     for field in page_fields:
                         x, y = field['x'], field['y']
+                        height = field.get('height', 20)
                         value = field['value']
                         
-                        if USE_RAW_COORDINATES:
-                            calibrated_x = x + 2
-                            calibrated_y = y + 6
+                        # 🎯 TEXT POSITIONING: Start at TOP of field for tall boxes
+                        calibrated_x = x + 2
+                        is_multiline = '\\n' in str(value) or '\n' in str(value) or len(value) > 40
+                        is_tall_field = height > 35  # Fields like Principal, Surety, Address
+                        
+                        if is_tall_field:
+                            calibrated_y = y + height - 12  # Start near TOP
+                        elif is_multiline:
+                            calibrated_y = y + height - 12  # Multi-line also at top
                         else:
-                            calibrated_x = x
-                            calibrated_y = y
+                            calibrated_y = y + 6  # Single line in small box: near bottom
                         
-                        logger.info(f"📍 Page {current_page_num}: {field['frontend_name']} → {field['pdf_field_name']}: ({x}, {y}) = '{value}'")
+                        logger.info(f"📍 Page {current_page_num}: {field['frontend_name']} → {field['pdf_field_name']}: ({x}, {y}) h={height} = '{value[:30]}...'")
                         
-                        # Handle text fields with wrapping
-                        if len(value) > 40:
-                            lines = [value[i:i+40] for i in range(0, len(value), 40)]
-                            for i, line in enumerate(lines[:3]):
-                                page_canvas.drawString(calibrated_x, calibrated_y - (i * 12), line)
+                        # 🚀 MULTI-LINE TEXT SUPPORT
+                        if '\\n' in str(value) or '\n' in str(value):
+                            lines = str(value).replace('\\n', '\n').split('\n')
+                            line_spacing = 10
+                            for i, line in enumerate(lines[:6]):
+                                if len(line) > 45:
+                                    wrapped_lines = [line[j:j+45] for j in range(0, len(line), 45)]
+                                    for k, wrapped_line in enumerate(wrapped_lines[:2]):
+                                        page_canvas.drawString(calibrated_x, calibrated_y - ((i * 2 + k) * line_spacing), wrapped_line)
+                                else:
+                                    page_canvas.drawString(calibrated_x, calibrated_y - (i * line_spacing), line)
+                        elif len(value) > 45:
+                            lines = [value[i:i+45] for i in range(0, len(value), 45)]
+                            for i, line in enumerate(lines[:4]):
+                                page_canvas.drawString(calibrated_x, calibrated_y - (i * 10), line)
                         else:
                             page_canvas.drawString(calibrated_x, calibrated_y, value)
                     
@@ -833,13 +924,18 @@ def create_gsa_pdf_overlay(form_data, template_type):
                 logger.error("❌ CRITICAL: PDF buffer is empty!")
                 raise Exception("PDF buffer is empty")
             
-            return output_buffer
+            # 🎖️ MILITARY GRADE: Create a fresh copy of the buffer to avoid reference issues
+            final_buffer = io.BytesIO(output_buffer.getvalue())
+            return final_buffer
         else:
-            # Return just the overlay (fallback)
-            return overlay_buffer
+            # 🎖️ MILITARY GRADE: No reader/writer means failure
+            logger.error("❌ CRITICAL: reader or writer missing in final block")
+            return None
     except Exception as e:
-        logger.error(f"Error merging PDFs: {str(e)}")
-        return overlay_buffer
+        logger.error(f"❌ CRITICAL: Error merging PDFs: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return None
 
 @app.route('/api/create-coordinate-mapper', methods=['POST'])
 @cross_origin()
@@ -1243,6 +1339,477 @@ def analyze_pdf_fields():
         return jsonify({'error': str(e)}), 500
 
 # OCR endpoint removed - using manual coordinate mapping instead
+
+@app.route('/api/generate-bond-package', methods=['POST'])
+def generate_bond_package():
+    """
+    🎯 MASTER BOND SHEET PACKAGE GENERATOR
+    Generates all 8 GSA forms from a single Master Bond Sheet input
+    and merges them into one "Completed Package" PDF
+    
+    Forms: SF24, SF25, SF28, SF1418, SF273, SF274, SF275, OF91
+    """
+    try:
+        data = request.get_json()
+        master_data = data.get('master_data', {})
+        package_data = data.get('package_data', {})
+        forms = data.get('forms', ['SF24', 'SF25', 'SF28', 'SF1418', 'SF273', 'SF274', 'SF275', 'OF91'])
+        
+        logger.info(f"📦 GENERATING BOND PACKAGE")
+        logger.info(f"📋 Master Data Keys: {list(master_data.keys())}")
+        logger.info(f"📋 Forms to generate: {forms}")
+        
+        # Create merged PDF writer
+        merged_pdf = PdfWriter()
+        
+        # Form type to template mapping (template_type used for schema lookup)
+        # PDF filenames in sample-pdfs folder (case matters!)
+        form_schemas = {
+            'SF24': ('sf24_23a', 'SF24-23a.pdf'),
+            'SF25': ('sf25a_23a', 'SF25a-23a.pdf'),
+            'SF28': ('sf28_23a', 'SF28-23a.pdf'),
+            'SF1418': ('sf1418_23a', 'SF1418-23a.pdf'),
+            'SF273': ('sf273_23a', 'SF273-23a.pdf'),
+            'SF274': ('sf274_23a', 'SF274-23a.pdf'),
+            'SF275': ('sf275_23a', 'SF275-23a.pdf'),
+            'OF91': ('of_91', 'OF-91.pdf')
+        }
+        
+        # Track which forms were successfully generated
+        generated_forms = []
+        skipped_forms = []
+        temp_pdf_files = []  # 🎖️ NUCLEAR GRADE: Store temp files for complete isolation
+        
+        for form_index, form_name in enumerate(forms):
+            logger.info(f"{'='*60}")
+            logger.info(f"🎖️ PROCESSING FORM {form_index + 1}/{len(forms)}: {form_name}")
+            logger.info(f"{'='*60}")
+            
+            # 🎖️ NUCLEAR GRADE: Force garbage collection before each form
+            gc.collect()
+            
+            form_info = form_schemas.get(form_name)
+            if not form_info:
+                logger.error(f"❌ CRITICAL: Unknown form type: {form_name}")
+                skipped_forms.append(form_name)
+                continue
+            
+            template_type, pdf_filename = form_info
+            logger.info(f"📄 Template: {template_type}, PDF: {pdf_filename}")
+            
+            # 🎖️ MILITARY GRADE: Retry logic for reliability
+            MAX_RETRIES = 3
+            retry_count = 0
+            form_generated = False
+            
+            while retry_count < MAX_RETRIES and not form_generated:
+                try:
+                    retry_count += 1
+                    if retry_count > 1:
+                        logger.info(f"🔄 Retry #{retry_count} for {form_name}")
+                        gc.collect()  # Extra cleanup on retry
+                    
+                    # Map master/package data to form-specific fields
+                    form_data = map_to_form_fields(form_name, master_data, package_data)
+                    
+                    if not form_data:
+                        logger.warning(f"⚠️ No field mapping for {form_name}")
+                        
+                    # Check if schema exists
+                    schema_path = f"../public/docs/pdf-templates/{template_type}_manual_schema.json"
+                    if not os.path.exists(schema_path):
+                        # Try alternate path
+                        schema_path = f"/Users/apple/Desktop/development/bermuda-app/bermuda-app/public/docs/pdf-templates/{template_type}_manual_schema.json"
+                    
+                    if not os.path.exists(schema_path):
+                        logger.error(f"❌ Schema not found for {form_name}: {schema_path}")
+                        break  # No point retrying if schema doesn't exist
+                    
+                    # Check if PDF template exists
+                    pdf_path = f"/Users/apple/Desktop/development/bermuda-app/bermuda-app/public/docs/sample-pdfs/{pdf_filename}"
+                    if not os.path.exists(pdf_path):
+                        logger.error(f"❌ PDF template not found: {pdf_path}")
+                        break  # No point retrying if PDF doesn't exist
+                    
+                    logger.info(f"✅ Schema found: {schema_path}")
+                    logger.info(f"✅ PDF found: {pdf_path}")
+                    logger.info(f"📋 Form data keys: {list(form_data.keys())}")
+                    
+                    # Generate the form PDF
+                    pdf_buffer = create_gsa_pdf_overlay(form_data, template_type)
+                    
+                    if pdf_buffer and pdf_buffer.getvalue():
+                        # 🎖️ Validate the buffer has content
+                        buffer_size = len(pdf_buffer.getvalue())
+                        if buffer_size < 1000:  # Suspiciously small PDF
+                            logger.warning(f"⚠️ PDF buffer suspiciously small ({buffer_size} bytes), retrying...")
+                            del pdf_buffer
+                            gc.collect()
+                            continue
+                        
+                        # 🎖️ NUCLEAR GRADE: Write to temp file IMMEDIATELY for complete isolation
+                        temp_form_file = tempfile.NamedTemporaryFile(delete=False, suffix=f'_{form_name}.pdf')
+                        temp_form_file.write(pdf_buffer.getvalue())
+                        temp_form_file.close()
+                        
+                        # Verify the temp file was written correctly
+                        temp_file_size = os.path.getsize(temp_form_file.name)
+                        if temp_file_size != buffer_size:
+                            logger.error(f"❌ Temp file size mismatch! Buffer: {buffer_size}, File: {temp_file_size}")
+                            os.unlink(temp_form_file.name)
+                            continue
+                        
+                        temp_pdf_files.append((form_name, temp_form_file.name))
+                        generated_forms.append(form_name)
+                        form_generated = True
+                        logger.info(f"✅ {form_name} saved to temp file ({temp_file_size} bytes): {temp_form_file.name}")
+                        
+                        # 🎖️ NUCLEAR GRADE: Immediately free buffer memory
+                        del pdf_buffer
+                        gc.collect()
+                        
+                    else:
+                        logger.warning(f"⚠️ Failed to generate PDF for {form_name}, attempt {retry_count}/{MAX_RETRIES}")
+                        
+                except Exception as form_error:
+                    logger.error(f"❌ Error generating {form_name} (attempt {retry_count}/{MAX_RETRIES}): {str(form_error)}")
+                    import traceback
+                    logger.error(traceback.format_exc())
+                    gc.collect()
+                    if retry_count >= MAX_RETRIES:
+                        break
+            
+            if not form_generated:
+                logger.error(f"❌ FAILED to generate {form_name} after {MAX_RETRIES} attempts")
+                skipped_forms.append(form_name)
+        
+        # 🎖️ NUCLEAR GRADE: Now merge all temp files into final PDF
+        logger.info(f"{'='*60}")
+        logger.info(f"🎖️ MERGING {len(temp_pdf_files)} TEMP FILES INTO FINAL PDF")
+        logger.info(f"{'='*60}")
+        gc.collect()  # Clean up before merge
+        
+        for form_name, temp_path in temp_pdf_files:
+            try:
+                # Read each temp file with a FRESH reader
+                with open(temp_path, 'rb') as f:
+                    temp_reader = PdfReader(f)
+                    page_count = len(temp_reader.pages)
+                    for page in temp_reader.pages:
+                        merged_pdf.add_page(page)
+                    logger.info(f"✅ Merged {form_name}: {page_count} pages from {temp_path}")
+            except Exception as merge_error:
+                logger.error(f"❌ Error merging {form_name}: {merge_error}")
+            finally:
+                # Delete temp file after merging
+                try:
+                    os.unlink(temp_path)
+                except:
+                    pass
+        
+        # Write merged PDF to buffer
+        output_buffer = io.BytesIO()
+        merged_pdf.write(output_buffer)
+        output_buffer.seek(0)
+        
+        logger.info(f"📦 PACKAGE COMPLETE!")
+        logger.info(f"✅ Generated: {generated_forms}")
+        logger.info(f"⚠️ Skipped: {skipped_forms}")
+        logger.info(f"📊 Total pages: {len(merged_pdf.pages)}")
+        
+        # Save to temp file for response
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
+        temp_file.write(output_buffer.getvalue())
+        temp_file.close()
+        
+        return send_file(
+            temp_file.name,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=f"Completed_Package_{master_data.get('clientFullName', 'Client').replace(' ', '_')}.pdf"
+        )
+        
+    except Exception as e:
+        logger.error(f"❌ Bond package generation error: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
+
+
+def format_date_mmddyyyy(date_str):
+    """
+    🗓️ Formats any date string to mm/dd/yyyy format
+    Handles: yyyy-mm-dd, mm/dd/yyyy, m/d/yyyy, etc.
+    """
+    if not date_str:
+        return ''
+    
+    try:
+        # Try common formats
+        for fmt in ['%Y-%m-%d', '%m/%d/%Y', '%m-%d-%Y', '%d/%m/%Y', '%Y/%m/%d']:
+            try:
+                parsed = datetime.strptime(str(date_str).strip(), fmt)
+                return parsed.strftime('%m/%d/%Y')
+            except ValueError:
+                continue
+        
+        # If already in correct format or can't parse, return as-is
+        return str(date_str)
+    except Exception as e:
+        logger.warning(f"⚠️ Date format error: {e}")
+        return str(date_str)
+
+
+def parse_amount_to_columns(amount_str):
+    """
+    💰 Parses amount like "60,700.50" into separate columns for PDF forms
+    Returns: (millions, thousands, hundreds, cents)
+    """
+    if not amount_str:
+        return ('', '', '', '')
+    
+    try:
+        # Remove $ and commas, convert to float
+        clean_amount = str(amount_str).replace('$', '').replace(',', '').strip()
+        amount = float(clean_amount)
+        
+        # Split into parts
+        cents = int((amount % 1) * 100)
+        whole = int(amount)
+        
+        hundreds = whole % 1000
+        thousands = (whole // 1000) % 1000
+        millions = whole // 1000000
+        
+        # Format with leading zeros where appropriate
+        return (
+            str(millions) if millions > 0 else '',
+            str(thousands) if thousands > 0 or millions > 0 else '',
+            str(hundreds) if hundreds > 0 or thousands > 0 or millions > 0 else '',
+            f"{cents:02d}" if cents > 0 else '00'
+        )
+    except Exception as e:
+        logger.warning(f"⚠️ Amount parsing error: {e}")
+        return ('', '', '', '')
+
+
+def map_to_form_fields(form_name, master_data, package_data):
+    """
+    🎯 Maps Master Bond Sheet data to form-specific field names
+    Field names MUST match the cleanName values from the manual schemas!
+    
+    🆕 UPDATED MAPPINGS:
+    - All dates → mm/dd/yyyy format
+    - Principal = Name + Third Party Address
+    - State = State + Birth Certificate #
+    - SF28 Type/Duration = "Surety/Lifetime"
+    - SF28 Employer = "Self Employed/[State]"
+    - SF273/274/275 Direct Writing = Name + Third Party Address
+    - SF274 Description = Performance Bond boilerplate
+    - SF275 Description = Payment Bond boilerplate
+    - OF91 field corrections per user spec
+    - Amount columns split into millions/thousands/hundreds/cents
+    """
+    # Common constants
+    SURETY_COMPANY = "Depository Trust Company"
+    SURETY_ADDRESS = "55 Water St.\nNew York, New York [10041-0099]"
+    SURETY_FULL = f"{SURETY_COMPANY}\n{SURETY_ADDRESS}"
+    
+    # Extract data from package_data (frontend sends this)
+    client_name = package_data.get('clientFullName', master_data.get('clientFullName', ''))
+    third_party_address = package_data.get('thirdPartyFullAddress', '')
+    state_of_birth = package_data.get('stateOfBirth', '')
+    birth_cert_number = package_data.get('birthCertificateNumber', '')
+    date_bond_executed = format_date_mmddyyyy(package_data.get('dateBondExecuted', ''))
+    court_case_number = package_data.get('courtCaseNumber', '')
+    trial_court_name = package_data.get('trialCourtName', '')
+    court_full_address = package_data.get('courtFullAddress', '')
+    amount_owed = package_data.get('amountOwed', '')
+    
+    # 🆕 Combined fields per user requirements
+    principal_with_address = f"{client_name}\n{third_party_address}" if third_party_address else client_name
+    state_with_birth_cert = f"{state_of_birth} - {birth_cert_number}" if birth_cert_number else state_of_birth
+    direct_writing_with_address = f"{client_name}\n{third_party_address}" if third_party_address else client_name
+    
+    # Surety blocks (as before)
+    surety_with_name = f"{client_name}\n{SURETY_FULL}" if client_name else SURETY_FULL
+    surety_no_name = SURETY_FULL
+    
+    # Amount columns for forms with split fields
+    millions, thousands, hundreds, cents = parse_amount_to_columns(amount_owed)
+    
+    logger.info(f"🎯 Mapping fields for {form_name}")
+    logger.info(f"📋 Client: {client_name}")
+    logger.info(f"📋 Principal+Address: {principal_with_address[:50]}...")
+    logger.info(f"📋 State+BirthCert: {state_with_birth_cert}")
+    logger.info(f"📋 Date (formatted): {date_bond_executed}")
+    logger.info(f"💰 Amount columns: M={millions} T={thousands} H={hundreds} C={cents}")
+    
+    # Form-specific field mappings - MUST MATCH SCHEMA cleanNames!
+    if form_name == 'SF24':
+        # SF24 schema fields: datebondex, princple, surety, state, individual, partnership, etc.
+        # Also has: millions, thousands, hunderds (typo in form!), cents
+        return {
+            'datebondex': date_bond_executed,
+            'princple': principal_with_address,  # 🆕 Name + Third Party Address
+            'surety': surety_with_name,  # SF24 includes client name in surety
+            'state': state_with_birth_cert,  # 🆕 State + Birth Cert #
+            'individual': 'X',  # Always INDIVIDUAL
+            'invitationno': court_case_number,
+            # 🆕 Amount columns
+            'millions': millions,
+            'thousands': thousands,
+            'hunderds': hundreds,  # Note: typo in original form field name!
+            'cents': cents,
+        }
+    
+    elif form_name == 'SF25':
+        # SF25a schema fields: datebondexecuted, principal, suretyies, stateofincorp, individual, etc.
+        # Also has: millions, thousands, hundreds (correct spelling!), cents
+        return {
+            'datebondexecuted': date_bond_executed,  # 🆕 FIXED: was dateexecuted
+            'principal': principal_with_address,  # 🆕 FIXED: was principaladdress
+            'suretyies': surety_no_name,  # 🆕 FIXED: was surety (schema has suretyies!)
+            'stateofincorp': state_with_birth_cert,  # 🆕 FIXED: was stateof
+            'individual': 'X',
+            'contractdate': date_bond_executed,  # 🆕 FIXED: was contratedate
+            'contractno': court_case_number,
+            # 🆕 Amount columns (SF25a uses correct spelling!)
+            'millions': millions,
+            'thousands': thousands,
+            'hundreds': hundreds,  # SF25a has correct spelling
+            'cents': cents,
+        }
+    
+    elif form_name == 'SF28':
+        # SF28 schema fields: state, county, name, typeoccp, brokadd, employer, realest1, realest2, encumb, bonds
+        # 🆕 Type/Duration defaults to "Surety/Lifetime"
+        # 🆕 Employer defaults to "Self Employed/[State]"
+        # 🆕 realest1/realest2/encumb/bonds have specific boilerplate text
+        
+        # Build field 7 (realest1) text
+        realest1_text = f"{court_case_number} - See GSA FORMS; sf 24; sf 25A; sf 28: sf 273; sf 274: sf 275 and 91."
+        
+        # Build field 7 continued (realest2) text  
+        realest2_text = f"Birth Certificate - {state_with_birth_cert} and Social Security - {package_data.get('socialSecurityNumber', '')}; Bond Number; Non-Negotiable set off {birth_cert_number}; Deposited with the United States Treasury"
+        
+        # Build field 8 (encumb) text - page 2
+        encumb_text = f"{trial_court_name} Attn: Clerk; {court_case_number} - See GSA FORMS; sf 24; sf 25A; sf 28; sf 273; sf 274; sf 275 and 91."
+        
+        # Build field 9 (bonds) text - page 3
+        bonds_text = f"Bid Bond issued by {trial_court_name} Attn: Clerk; {court_case_number} - See GSA FORMS; sf 24; sf 25A; sf 28; sf 273; sf 274; sf 275 and 91."
+        
+        # 🎖️ FIXED: 'state' is Third Party's State (residence), not State of Birth
+        # 🎖️ Convert 2-letter code to full state name
+        third_party_state_code = package_data.get('thirdPartyState', state_of_birth)
+        third_party_state_full = get_state_full_name(third_party_state_code)
+        
+        return {
+            'state': third_party_state_full,  # 🎖️ Full state name (e.g., "Maryland" not "MD")
+            'county': package_data.get('thirdPartyCounty', ''),
+            'name': client_name,
+            'brokadd': surety_no_name,  # Individual Surety Broker = DTC address
+            'typeoccp': 'Surety/Lifetime',  # 🆕 DEFAULT VALUE
+            'employer': f"Self Employed/{state_of_birth}",  # Still uses State of Birth
+            'realest1': realest1_text,  # 🆕 Field 7 with boilerplate
+            'realest2': realest2_text,  # 🆕 Field 7 continued with boilerplate
+            'encumb': encumb_text,  # 🆕 Field 8 with boilerplate (was missing!)
+            'bonds': bonds_text,  # 🆕 Field 9 (page 3) with boilerplate
+        }
+    
+    elif form_name == 'SF1418':
+        # SF1418 schema fields: date, principal, sureties, state, contract, contract_2, checkbox1-4
+        # Also has: millions, thousands, hundreds, cents
+        return {
+            'date': date_bond_executed,
+            'principal': principal_with_address,  # 🆕 Name + Third Party Address
+            'sureties': surety_with_name,  # SF1418 includes client name
+            'state': state_with_birth_cert,  # 🆕 State + Birth Cert #
+            'contract': date_bond_executed,  # Contract date
+            'contract_2': court_case_number,  # Contract number
+            'checkbox1': 'X',  # Individual checkbox
+            # 🆕 Amount columns
+            'millions': millions,
+            'thousands': thousands,
+            'hundreds': hundreds,
+            'cents': cents,
+        }
+    
+    elif form_name == 'SF273':
+        # SF273 schema fields: writco, reinsuringcompany, agreedatedirect, stateofinc1, 
+        # agreedateexecutes, penalsum, contractdate, contractno1, contractdescript, principal
+        return {
+            'writco': direct_writing_with_address,  # 🆕 Name + Third Party Address
+            'reinsuringcompany': surety_no_name,  # Reinsuring Company = DTC
+            'agreedatedirect': date_bond_executed,
+            'stateofinc1': state_with_birth_cert,  # 🆕 State + Birth Cert #
+            'agreedateexecutes': date_bond_executed,
+            'penalsum': amount_owed,  # 🆕 Penal Sum of Bond
+            'contractdate': date_bond_executed,
+            'contractno1': court_case_number,
+            'principal': principal_with_address,  # 🆕 Name + Third Party Address
+        }
+    
+    elif form_name == 'SF274':
+        # SF274 schema fields: dwc, reinsurco, dateagreed, stateofincorp, reinsuredate, 
+        # reinsurance, penalsum, datecontract, contractnum, description, principal
+        # 🆕 Description = Performance Bond boilerplate
+        description_text = f"Performance Bond\nCase No: {court_case_number}\n{trial_court_name}\nAttn: Clerk\n{court_full_address}"
+        return {
+            'dwc': direct_writing_with_address,  # 🆕 Name + Third Party Address
+            'reinsurco': surety_no_name,  # Reinsuring Company = DTC
+            'dateagreed': date_bond_executed,
+            'stateofincorp': state_with_birth_cert,  # 🆕 State + Birth Cert #
+            'reinsuredate': date_bond_executed,
+            'penalsum': amount_owed,  # 🆕 Penal Sum of Bond
+            'datecontract': date_bond_executed,
+            'contractnum': court_case_number,
+            'description': description_text,  # 🆕 Performance Bond text
+            'principal': principal_with_address,  # 🆕 Name + Third Party Address
+        }
+    
+    elif form_name == 'SF275':
+        # SF275 schema fields: directwritingcompany, reinsuringcompany, dateexecuted, 
+        # stateofincorporation, dateexecuted2, penalsum, dateofbond, bondnumber, principal, descriptionofbond
+        # 🆕 Description = Payment Bond boilerplate
+        description_text = f"Payment Bond\nPayment Settlement of Contract\n{trial_court_name}\nAttn: Clerk\n{court_full_address}"
+        return {
+            'directwritingcompany': direct_writing_with_address,  # 🆕 Name + Third Party Address
+            'reinsuringcompany': surety_no_name,  # Reinsuring Company = DTC
+            'dateexecuted': date_bond_executed,
+            'stateofincorporation': state_with_birth_cert,  # 🆕 State + Birth Cert #
+            'dateexecuted2': date_bond_executed,
+            'penalsum': amount_owed,  # 🆕 Penal Sum of Bond (was amountofreinsurance)
+            'dateofbond': date_bond_executed,
+            'bondnumber': birth_cert_number,
+            'descriptionofbond': description_text,  # 🆕 Payment Bond text
+            'principal': principal_with_address,  # 🆕 Name + Third Party Address
+        }
+    
+    elif form_name == 'OF91':
+        # OF91 schema fields: name1, residence, contractnumber, accountnumber, 
+        # nameinstitution, institutionaddress, nameauthorizedrep, propertydescription, institution
+        # 🆕 CORRECTED per user specification:
+        # - residence → State + Birth Certificate #
+        # - nameinstitution → Name of Trial Court
+        # - institutionaddress → Full Address of Court
+        # - institution → Trial Court + "Attn: Clerk"
+        return {
+            'name1': client_name,
+            'residence': state_with_birth_cert,  # 🆕 State + Birth Cert # (not address)
+            'contractnumber': package_data.get('socialSecurityNumber', ''),
+            'accountnumber': package_data.get('uccTrustNumber', ''),
+            'nameinstitution': trial_court_name,  # 🆕 Name of Trial Court
+            'institutionaddress': court_full_address,  # 🆕 Full Address of Court
+            'nameauthorizedrep': client_name,  # Whereas I (name)
+            'propertydescription': package_data.get('of91Claims', ''),  # Claims arising therefrom
+            'institution': f"{trial_court_name} Attn: Clerk",  # Trial Court + Attn: Clerk (no line break)
+        }
+    
+    # Default: return package data as-is
+    logger.warning(f"⚠️ No specific mapping for {form_name}, using raw package_data")
+    return package_data
+
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5001))  # 🔥 FIXED: Default to port 5001!

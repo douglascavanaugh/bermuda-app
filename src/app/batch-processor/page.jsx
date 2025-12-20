@@ -5,7 +5,7 @@ export default function BatchProcessorPage() {
     <div className="min-h-screen bg-gray-900 py-8">
       <div className="container mx-auto px-4">
         <h1 className="text-5xl font-bold text-center text-white mb-4">
-          UNIVERSAL BATCH PROCESSOR 🚀
+          UNIVERSAL BATCH PROCESSOR
         </h1>
         
         <div className="text-center mb-8">

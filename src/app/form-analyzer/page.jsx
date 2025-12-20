@@ -165,7 +165,7 @@ export default function FormAnalyzer() {
                   Analyzing PDF...
                 </div>
               ) : (
-                '🚀 ANALYZE FORM FIELDS'
+                'ANALYZE FORM FIELDS'
               )}
             </button>
           </div>

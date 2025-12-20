@@ -1,0 +1,118 @@
+{
+  "formType": "OF_91",
+  "name": "OF-91 Visual Mapping",
+  "description": "Visual field mapping schema for OF-91 (drag/resize positions)",
+  "version": "1.0",
+  "hasFormFields": true,
+  "detectedFieldCount": 9,
+  "fields": [
+    {
+      "name": "name1[0]",
+      "cleanName": "name1",
+      "type": "PDFTextField",
+      "x": 114.72,
+      "y": 680.95,
+      "width": 153.72,
+      "height": 20,
+      "fontSize": 10,
+      "page": 1,
+      "required": false
+    },
+    {
+      "name": "residence[0]",
+      "cleanName": "residence",
+      "type": "PDFTextField",
+      "x": 294.01,
+      "y": 679.38,
+      "width": 187.19,
+      "height": 20,
+      "fontSize": 10,
+      "page": 1,
+      "required": false
+    },
+    {
+      "name": "contractnumber[0]",
+      "cleanName": "contractnumber",
+      "type": "PDFTextField",
+      "x": 374.11,
+      "y": 653.1,
+      "width": 167.76,
+      "height": 20,
+      "fontSize": 10,
+      "page": 1,
+      "required": false
+    },
+    {
+      "name": "accountnumber[0]",
+      "cleanName": "accountnumber",
+      "type": "PDFTextField",
+      "x": 207.75,
+      "y": 593.89,
+      "width": 247.44,
+      "height": 20,
+      "fontSize": 10,
+      "page": 1,
+      "required": false
+    },
+    {
+      "name": "nameinstitution[0]",
+      "cleanName": "nameinstitution",
+      "type": "PDFTextField",
+      "x": 114.01,
+      "y": 569.23,
+      "width": 200,
+      "height": 20,
+      "fontSize": 10,
+      "page": 1,
+      "required": false
+    },
+    {
+      "name": "institutionaddress[0]",
+      "cleanName": "institutionaddress",
+      "type": "PDFTextField",
+      "x": 121.49,
+      "y": 522,
+      "width": 394.37,
+      "height": 20,
+      "fontSize": 10,
+      "page": 1,
+      "required": false
+    },
+    {
+      "name": "nameauthorizedrep[0]",
+      "cleanName": "nameauthorizedrep",
+      "type": "PDFTextField",
+      "x": 122.26,
+      "y": 485.18,
+      "width": 295.11,
+      "height": 20,
+      "fontSize": 10,
+      "page": 1,
+      "required": false
+    },
+    {
+      "name": "propertydescription[0]",
+      "cleanName": "propertydescription",
+      "type": "PDFTextField",
+      "x": 64.79,
+      "y": 370.02,
+      "width": 486.54,
+      "height": 60.3,
+      "fontSize": 10,
+      "page": 1,
+      "required": false
+    },
+    {
+      "name": "institution[0]",
+      "cleanName": "institution",
+      "type": "PDFTextField",
+      "x": 63.75,
+      "y": 209.91,
+      "width": 486,
+      "height": 21.05,
+      "fontSize": 10,
+      "page": 1,
+      "required": false
+    }
+  ]
+}

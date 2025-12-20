@@ -582,7 +582,7 @@ function UniversalBatchProcessor() {
   return (
     <div className="max-w-6xl mx-auto p-6 bg-gray-800 rounded-lg">
       <h2 className="text-3xl font-bold text-white mb-6 text-center">
-        UNIVERSAL BATCH PROCESSOR 🚀⚡
+        UNIVERSAL BATCH PROCESSOR
       </h2>
       <p className="text-center text-gray-300 mb-8">
         Process ANY form type with THOUSANDS of entries!
@@ -667,7 +667,7 @@ function UniversalBatchProcessor() {
             disabled={!selectedTemplate || !inputData.trim() || isProcessing}
             className="w-full py-3 px-6 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors"
           >
-            {isProcessing ? 'Processing...' : 'Process Batch 🚀'}
+            {isProcessing ? 'Processing...' : 'Process Batch'}
           </button>
         </div>
 

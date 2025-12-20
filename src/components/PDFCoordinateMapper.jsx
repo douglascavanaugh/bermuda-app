@@ -5,6 +5,7 @@ import { useState, useRef, useEffect } from 'react';
 function PDFCoordinateMapper() {
   const canvasRef = useRef(null);
   const fileInputRef = useRef(null);
+  const schemaInputRef = useRef(null); // 🆕 For importing existing schemas
   const [fieldMappings, setFieldMappings] = useState([]);
   const [selectedFieldName, setSelectedFieldName] = useState('');
   const [isAddingField, setIsAddingField] = useState(false);
@@ -22,6 +23,7 @@ function PDFCoordinateMapper() {
   const [isResizing, setIsResizing] = useState(false);
   const [resizingFieldId, setResizingFieldId] = useState(null);
   const [resizeHandle, setResizeHandle] = useState(null);
+  const [importedSchemaName, setImportedSchemaName] = useState(''); // 🆕 Track imported schema
   
   // 🚀 CLEAN & SIMPLE: Back to proven React state management
   
@@ -777,6 +779,61 @@ function PDFCoordinateMapper() {
     setMessage('✅ JSON schema exported successfully!');
   };
 
+  // 🆕 IMPORT EXISTING SCHEMA - Load previously mapped fields for editing!
+  const importSchema = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const schema = JSON.parse(e.target.result);
+        
+        if (!schema.fields || !Array.isArray(schema.fields)) {
+          setMessage('❌ Invalid schema: No fields array found');
+          return;
+        }
+
+        // Convert schema fields back to visualFields format
+        const importedFields = schema.fields.map((field, index) => ({
+          id: `imported_${index}_${Date.now()}`,
+          name: field.name || `field_${index}`,
+          cleanName: field.cleanName || field.name?.toLowerCase().replace(/[^a-z0-9]/g, '_') || `field_${index}`,
+          type: field.type === 'PDFCheckBox' ? 'checkbox' : 'text',
+          x: field.x || 100,
+          y: field.y || 100,
+          width: field.width || 150,
+          height: field.height || 20,
+          page: field.page || 1
+        }));
+
+        // Merge with existing fields or replace
+        setVisualFields(importedFields);
+        
+        // Also populate detectedFields list for the sidebar
+        const fieldNames = importedFields.map(f => f.name);
+        setDetectedFields(fieldNames);
+        
+        setImportedSchemaName(file.name);
+        setMessage(`✅ Imported ${importedFields.length} fields from "${file.name}"! You can now drag/resize them.`);
+        
+        // Auto-generate CSV
+        setTimeout(() => generateCSVTemplate(), 100);
+        
+      } catch (error) {
+        console.error('Schema import error:', error);
+        setMessage(`❌ Failed to parse schema: ${error.message}`);
+      }
+    };
+    
+    reader.readAsText(file);
+    
+    // Reset the input so the same file can be imported again
+    if (schemaInputRef.current) {
+      schemaInputRef.current.value = '';
+    }
+  };
+
   // Navigate between pages
   const goToPage = (pageNumber) => {
     if (!uploadedFile || pageNumber < 1 || pageNumber > totalPages) return;
@@ -802,10 +859,10 @@ function PDFCoordinateMapper() {
   return (
     <div className="max-w-7xl mx-auto p-6 bg-gray-800 rounded-lg">
       <h2 className="text-3xl font-bold text-white mb-6 text-center">
-        🎯 BULLETPROOF PDF COORDINATE MAPPER
+        PDF COORDINATE MAPPER
       </h2>
       <p className="text-center text-gray-300 mb-8">
-        NO IMAGE CONVERSION BULLSHIT! Upload PDF → Click fields → Export schema!
+        Upload PDF → Click fields → Export schema!
       </p>
 
       {/* Status Message */}
@@ -865,6 +922,30 @@ function PDFCoordinateMapper() {
                       <span className="px-2 py-1 bg-green-800 text-green-200 rounded text-sm">
                         {visualFields.filter(f => f.page === currentPage).length} fields on page {currentPage}
                       </span>
+                    </div>
+                    
+                    {/* 🆕 IMPORT EXISTING SCHEMA */}
+                    <div className="mt-3 pt-3 border-t border-green-700">
+                      <p className="text-green-200 text-xs mb-2">📥 Have an existing schema? Import it to edit:</p>
+                      <input
+                        ref={schemaInputRef}
+                        type="file"
+                        accept=".json"
+                        onChange={importSchema}
+                        className="hidden"
+                        id="schema-import"
+                      />
+                      <label
+                        htmlFor="schema-import"
+                        className="inline-block px-3 py-1 bg-yellow-600 hover:bg-yellow-500 text-white rounded text-sm cursor-pointer transition-colors"
+                      >
+                        📂 Import Schema JSON
+                      </label>
+                      {importedSchemaName && (
+                        <p className="text-yellow-200 text-xs mt-1">
+                          ✅ Loaded: {importedSchemaName}
+                        </p>
+                      )}
                     </div>
                   </div>
                 )}
@@ -956,13 +1037,13 @@ function PDFCoordinateMapper() {
           {/* Mapped Fields */}
           <div className="bg-gray-700 p-4 rounded">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-bold text-white">🎯 Visual Field Mapping ({visualFields.length} fields):</h3>
+              <h3 className="text-lg font-bold text-white">Visual Field Mapping ({visualFields.length} fields):</h3>
               {visualFields.length > 0 && (
                 <button
                   onClick={exportMappings}
                   className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-sm"
                 >
-                  📥 Export Visual Schema
+                  Export Visual Schema
                 </button>
               )}
             </div>

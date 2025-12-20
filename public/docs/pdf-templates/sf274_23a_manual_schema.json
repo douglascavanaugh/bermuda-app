@@ -1,0 +1,130 @@
+{
+  "formType": "SF274_23A",
+  "name": "SF274-23a Visual Mapping",
+  "description": "Visual field mapping schema for SF274-23a (drag/resize positions)",
+  "version": "1.0",
+  "hasFormFields": true,
+  "detectedFieldCount": 10,
+  "fields": [
+    {
+      "name": "DateAGREED[0]",
+      "cleanName": "dateagreed",
+      "type": "PDFTextField",
+      "x": 369.85,
+      "y": 650.62,
+      "width": 183.06,
+      "height": 25.54,
+      "fontSize": 10,
+      "page": 1,
+      "required": false
+    },
+    {
+      "name": "dwc[0]",
+      "cleanName": "dwc",
+      "type": "PDFTextField",
+      "x": 21.03,
+      "y": 615.03,
+      "width": 286.02,
+      "height": 69.81,
+      "fontSize": 10,
+      "page": 1,
+      "required": false
+    },
+    {
+      "name": "STATEOFINCORP[0]",
+      "cleanName": "stateofincorp",
+      "type": "PDFTextField",
+      "x": 369.85,
+      "y": 612.57,
+      "width": 182.27,
+      "height": 20,
+      "fontSize": 10,
+      "page": 1,
+      "required": false
+    },
+    {
+      "name": "REINSUREDate[0]",
+      "cleanName": "reinsuredate",
+      "type": "PDFTextField",
+      "x": 370.07,
+      "y": 522.78,
+      "width": 181.25,
+      "height": 20.22,
+      "fontSize": 10,
+      "page": 1,
+      "required": false
+    },
+    {
+      "name": "REINSURCO[0]",
+      "cleanName": "reinsurco",
+      "type": "PDFTextField",
+      "x": 21.12,
+      "y": 483.47,
+      "width": 285.93,
+      "height": 72.13,
+      "fontSize": 10,
+      "page": 1,
+      "required": false
+    },
+    {
+      "name": "penalsum",
+      "cleanName": "penalsum",
+      "type": "PDFTextField",
+      "x": 329.9,
+      "y": 422.25,
+      "width": 137.91,
+      "height": 20,
+      "fontSize": 10,
+      "page": 1,
+      "required": false
+    },
+    {
+      "name": "DateCONTRACT[0]",
+      "cleanName": "datecontract",
+      "type": "PDFTextField",
+      "x": 21.01,
+      "y": 387.69,
+      "width": 112.69,
+      "height": 20,
+      "fontSize": 10,
+      "page": 1,
+      "required": false
+    },
+    {
+      "name": "CONTRACTNUM[0]",
+      "cleanName": "contractnum",
+      "type": "PDFTextField",
+      "x": 139.48,
+      "y": 387.69,
+      "width": 120,
+      "height": 20,
+      "fontSize": 10,
+      "page": 1,
+      "required": false
+    },
+    {
+      "name": "DESCRIPTION[0]",
+      "cleanName": "description",
+      "type": "PDFTextField",
+      "x": 21.01,
+      "y": 259.77,
+      "width": 259.26,
+      "height": 92.53,
+      "fontSize": 10,
+      "page": 1,
+      "required": false
+    },
+    {
+      "name": "PRINCIPAL[0]",
+      "cleanName": "principal",
+      "type": "PDFTextField",
+      "x": 306.21,
+      "y": 259.77,
+      "width": 245.11,
+      "height": 93.32,
+      "fontSize": 10,
+      "page": 1,
+      "required": false
+    }
+  ]
+}
