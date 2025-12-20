@@ -609,10 +609,28 @@ export default function MasterBondSheet({ isProduction = false }) {
       }
 
       if (result.formData) {
-        // Fill form with extracted data
+        // Filter out empty values - don't overwrite defaults with empty strings
+        const filteredData = {};
+        for (const [key, value] of Object.entries(result.formData)) {
+          if (value && value.toString().trim() !== '') {
+            filteredData[key] = value;
+          }
+        }
+        
+        // Normalize trialCourtType if present
+        if (filteredData.trialCourtType) {
+          const courtType = filteredData.trialCourtType.toLowerCase().trim();
+          if (courtType === 'federal' || courtType === 'f') {
+            filteredData.trialCourtType = 'Federal';
+          } else {
+            filteredData.trialCourtType = 'State';  // Default to State
+          }
+        }
+        
+        // Fill form with extracted data (empty values won't overwrite defaults)
         setFormData(prev => ({
           ...prev,
-          ...result.formData
+          ...filteredData
         }));
         setSuccessMessage('✅ Form data extracted successfully from image!');
         setShowOcrModal(false);
