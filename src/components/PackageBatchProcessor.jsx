@@ -3,14 +3,12 @@
 import { useState, useRef } from 'react';
 import { Upload, FileText, Loader2, Download, CheckCircle, XCircle, Package, Clipboard } from 'lucide-react';
 
-// Constants for the package
-const SURETY_COMPANY = {
-  name: 'Depository Trust Company',
-  address: '55 Water St.',
-  cityStateZip: 'New York, New York [10041-0099]'
-};
-
-const GSA_REFERENCE = 'See GSA FORMS; sf 24; sf 25A; sf 28; sf 273; sf 274; sf 275 and 91.';
+// 🔒 SINGLE SOURCE OF TRUTH - Import from shared utility
+import { 
+  ALL_FORMS,
+  applyDefaults, 
+  buildPackageData 
+} from '@/utils/bondPackageUtils';
 
 export default function PackageBatchProcessor() {
   const [entries, setEntries] = useState([]);
@@ -131,53 +129,8 @@ export default function PackageBatchProcessor() {
     }
   };
 
-  // Build package data for a single entry (EXACT match with MasterBondSheet)
-  const buildPackageData = (data) => {
-    const suretyBlockWithName = `${data.clientFullName}\n${SURETY_COMPANY.name}\n${SURETY_COMPANY.address}\n${SURETY_COMPANY.cityStateZip}`;
-    const suretyBlockNoName = `${SURETY_COMPANY.name}\n${SURETY_COMPANY.address}\n${SURETY_COMPANY.cityStateZip}`;
-    const courtReference = `${data.trialCourtName} Attn: Clerk; ${data.courtCaseNumber}`;
-    const sf28Field7 = `${data.courtCaseNumber} - ${GSA_REFERENCE}\nBirth Certificate - [${data.stateOfBirth} - ${data.birthCertificateNumber}] and Social Security - [${data.socialSecurityNumber}]; Bond Number; Non-Negotiable set off [${data.birthCertificateNumber}];\nDeposited with the United States Treasury`;
-    const sf28Field8 = `${courtReference} - ${GSA_REFERENCE}`;
-    const sf28Field9 = `Bid Bond issued by ${courtReference} - ${GSA_REFERENCE}`;
-    const of91Claims = `${courtReference} - ${GSA_REFERENCE}`;
-    
-    // 🎖️ FIXED: Principal address uses ZIP, not County
-    // 🎖️ ZIP already includes brackets if provided, so don't double-add
-    const thirdPartyZip = data.thirdPartyZip || '';
-    const zipWithBrackets = thirdPartyZip.startsWith('[') ? thirdPartyZip : (thirdPartyZip ? `[${thirdPartyZip}]` : '');
-    const thirdPartyFullAddress = `${data.thirdPartyAddress}\n${data.thirdPartyCity}, ${data.thirdPartyState} ${zipWithBrackets}`;
-
-    return {
-      dateBondExecuted: data.dateBondExecuted || 'Open',
-      clientFullName: data.clientFullName,
-      stateOfBirth: data.stateOfBirth,
-      courtCaseNumber: data.courtCaseNumber,
-      socialSecurityNumber: data.socialSecurityNumber,
-      birthCertificateNumber: data.birthCertificateNumber,
-      uccTrustNumber: data.uccTrustNumber,
-      suretyBlockWithName,
-      suretyBlockNoName,
-      courtReference,
-      trialCourtName: data.trialCourtName,
-      trialCourtType: data.trialCourtType || 'State',
-      courtFullAddress: `${data.courtAddress}, ${data.courtCity}, ${data.courtState} ${data.courtZip || ''}`.trim(),
-      thirdPartyName: data.thirdPartyName,
-      thirdPartyFullAddress,
-      thirdPartyState: data.thirdPartyState,
-      thirdPartyCounty: data.thirdPartyCounty,
-      prisonNumber: data.prisonNumber,
-      prisonName: data.prisonName,
-      prisonAddress: data.prisonAddress,
-      sf28Field7,
-      sf28Field8,
-      sf28Field9,
-      of91Claims,
-      amountOwed: data.amountOwed,
-      gsaReference: GSA_REFERENCE,
-      suretyCompanyName: SURETY_COMPANY.name,
-      suretyCompanyAddress: `${SURETY_COMPANY.address}\n${SURETY_COMPANY.cityStateZip}`
-    };
-  };
+  // 🔒 LOCKED: buildPackageData is imported from shared utility
+  // See: src/utils/bondPackageUtils.js - DO NOT DUPLICATE!
 
   // Process all entries
   const handleProcessAll = async () => {
@@ -194,25 +147,17 @@ export default function PackageBatchProcessor() {
       const entry = entries[i];
       
       try {
-        // 🎖️ SYNC: Apply defaults before processing
-        const processedEntry = { ...entry };
-        if (!processedEntry.dateBondExecuted || processedEntry.dateBondExecuted.trim() === '') {
-          processedEntry.dateBondExecuted = 'Open';
-        }
-        // ssnBackNumber is optional (Canada doesn't have it)
-        if (!processedEntry.ssnBackNumber) {
-          processedEntry.ssnBackNumber = '';
-        }
-        
+        // 🔒 LOCKED: Using shared utility for defaults - DO NOT DUPLICATE!
+        const processedEntry = applyDefaults(entry);
         const packageData = buildPackageData(processedEntry);
 
         const response = await fetch('/api/generate-bond-package', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            masterData: processedEntry,  // 🎖️ Use processed data with defaults
+            masterData: processedEntry,
             packageData: packageData,
-            forms: ['SF24', 'SF25', 'SF28', 'SF1418', 'SF273', 'SF274', 'SF275', 'OF91']
+            forms: ALL_FORMS  // 🔒 Using shared constant
           })
         });
 

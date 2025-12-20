@@ -88,13 +88,13 @@ const initialFormData = {
 const initialErrors = {};
 
 // Constants for the package
-const SURETY_COMPANY = {
-  name: 'Depository Trust Company',
-  address: '55 Water St.',
-  cityStateZip: 'New York, New York [10041-0099]'
-};
-
-const GSA_REFERENCE = 'See GSA FORMS; sf 24; sf 25A; sf 28; sf 273; sf 274; sf 275 and 91.';
+// 🔒 SINGLE SOURCE OF TRUTH - Import from shared utility
+import { 
+  SURETY_COMPANY, 
+  ALL_FORMS,
+  applyDefaults, 
+  buildPackageData as buildPackageDataFromUtils
+} from '@/utils/bondPackageUtils';
 
 export default function MasterBondSheet({ isProduction = false }) {
   const [formData, setFormData] = useState(initialFormData);
@@ -348,15 +348,17 @@ export default function MasterBondSheet({ isProduction = false }) {
       ));
       
       try {
-        const packageData = buildPackageData(entry.data);
+        // 🔒 LOCKED: Using shared utility for defaults
+        const processedData = applyDefaults(entry.data);
+        const packageData = buildPackageData(processedData);
         
         const response = await fetch('/api/generate-bond-package', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            masterData: entry.data,
+            masterData: processedData,
             packageData: packageData,
-            forms: ['SF24', 'SF25', 'SF28', 'SF1418', 'SF273', 'SF274', 'SF275', 'OF91']
+            forms: ALL_FORMS  // 🔒 Using shared constant
           })
         });
         
@@ -665,13 +667,8 @@ export default function MasterBondSheet({ isProduction = false }) {
     setSuccessMessage('');
 
     try {
-      // 🎖️ SYNC: Apply same defaults as batch processing
-      const processedFormData = { ...formData };
-      
-      // If Date Bond Executed is empty, set to "Open"
-      if (!processedFormData.dateBondExecuted || processedFormData.dateBondExecuted.trim() === '') {
-        processedFormData.dateBondExecuted = 'Open';
-      }
+      // 🔒 LOCKED: Using shared utility for defaults - DO NOT DUPLICATE!
+      const processedFormData = applyDefaults(formData);
       
       // Build the template data with all mappings
       const packageData = buildPackageData(processedFormData);
@@ -683,9 +680,9 @@ export default function MasterBondSheet({ isProduction = false }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          masterData: processedFormData,  // 🎖️ Use processed data with defaults applied
+          masterData: processedFormData,
           packageData: packageData,
-          forms: ['SF24', 'SF25', 'SF28', 'SF1418', 'SF273', 'SF274', 'SF275', 'OF91']
+          forms: ALL_FORMS  // 🔒 Using shared constant
         })
       });
 
@@ -716,50 +713,9 @@ export default function MasterBondSheet({ isProduction = false }) {
   };
 
   // Build all the template data from master form
-  const buildPackageData = (data) => {
-    const suretyBlockWithName = `${data.clientFullName}\n${SURETY_COMPANY.name}\n${SURETY_COMPANY.address}\n${SURETY_COMPANY.cityStateZip}`;
-    const suretyBlockNoName = `${SURETY_COMPANY.name}\n${SURETY_COMPANY.address}\n${SURETY_COMPANY.cityStateZip}`;
-    const courtReference = `${data.trialCourtName} Attn: Clerk; ${data.courtCaseNumber}`;
-    const sf28Field7 = `${data.courtCaseNumber} - ${GSA_REFERENCE}\nBirth Certificate - [${data.stateOfBirth} - ${data.birthCertificateNumber}] and Social Security - [${data.socialSecurityNumber}]; Bond Number; Non-Negotiable set off [${data.birthCertificateNumber}];\nDeposited with the United States Treasury`;
-    const sf28Field8 = `${courtReference} - ${GSA_REFERENCE}`;
-    const sf28Field9 = `Bid Bond issued by ${courtReference} - ${GSA_REFERENCE}`;
-    const of91Claims = `${courtReference} - ${GSA_REFERENCE}`;
-    // 🎖️ FIXED: Principal address uses ZIP, not County
-    // 🎖️ ZIP already includes brackets if provided, so don't double-add
-    const zipWithBrackets = data.thirdPartyZip.startsWith('[') ? data.thirdPartyZip : `[${data.thirdPartyZip}]`;
-    const thirdPartyFullAddress = `${data.thirdPartyAddress}\n${data.thirdPartyCity}, ${data.thirdPartyState} ${zipWithBrackets}`;
-
-    return {
-      dateBondExecuted: data.dateBondExecuted,
-      clientFullName: data.clientFullName,
-      stateOfBirth: data.stateOfBirth,
-      courtCaseNumber: data.courtCaseNumber,
-      socialSecurityNumber: data.socialSecurityNumber,
-      birthCertificateNumber: data.birthCertificateNumber,
-      uccTrustNumber: data.uccTrustNumber,
-      suretyBlockWithName,
-      suretyBlockNoName,
-      courtReference,
-      trialCourtName: data.trialCourtName,
-      trialCourtType: data.trialCourtType,
-      courtFullAddress: `${data.courtAddress}, ${data.courtCity}, ${data.courtState} ${data.courtZip || ''}`.trim(),
-      thirdPartyName: data.thirdPartyName,
-      thirdPartyFullAddress,
-      thirdPartyState: data.thirdPartyState,
-      thirdPartyCounty: data.thirdPartyCounty,
-      prisonNumber: data.prisonNumber,
-      prisonName: data.prisonName,
-      prisonAddress: data.prisonAddress,
-      sf28Field7,
-      sf28Field8,
-      sf28Field9,
-      of91Claims,
-      amountOwed: data.amountOwed,
-      gsaReference: GSA_REFERENCE,
-      suretyCompanyName: SURETY_COMPANY.name,
-      suretyCompanyAddress: `${SURETY_COMPANY.address}\n${SURETY_COMPANY.cityStateZip}`
-    };
-  };
+  // 🔒 LOCKED: Using shared utility - DO NOT DUPLICATE!
+  // See: src/utils/bondPackageUtils.js
+  const buildPackageData = buildPackageDataFromUtils;
 
   // Input field styling (matching Hawaii/SPC)
   const getInputClassName = (fieldName, fullWidth = false) => `
