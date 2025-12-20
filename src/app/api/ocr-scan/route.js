@@ -47,7 +47,7 @@ export async function POST(request) {
   "stateOfBirth": "State of birth (full name)",
   "dateOfBirth": "Date of birth in mm/dd/yyyy format",
   "uccTrustNumber": "UCC Trust number",
-  "socialSecurityNumber": "Social security number (xxx-xx-xxxx format)",
+  "socialSecurityNumber": "SSN or SIN (US: xxx-xx-xxxx OR Canada: xxx-xxx-xxx)",
   "ssnBackNumber": "Number on back of SS card",
   "thirdPartyName": "Third party name or empty",
   "thirdPartyAddress": "Street address only",

@@ -126,7 +126,7 @@ export default function MasterBondSheet({ isProduction = false }) {
     stateOfBirth: 'State of Birth is required',
     dateOfBirth: 'Date of Birth is required',
     uccTrustNumber: 'UCC Trust # is required',
-    socialSecurityNumber: 'Social Security # is required (XXX-XX-XXXX)',
+    socialSecurityNumber: 'SSN/SIN is required (9 digits)',
     ssnBackNumber: 'SSN Back Number is required',
     thirdPartyAddress: 'Third Party Address is required',
     thirdPartyCity: 'Third Party City is required',
@@ -508,18 +508,40 @@ export default function MasterBondSheet({ isProduction = false }) {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Format SSN as user types (XXX-XX-XXXX)
+  // Format SSN/SIN as user types
+  // 🇺🇸 US SSN: XXX-XX-XXXX (9 digits)
+  // 🇨🇦 Canadian SIN: XXX-XXX-XXX (9 digits)
   const handleSSNChange = (e) => {
-    let value = e.target.value.replace(/\D/g, '');
-    if (value.length > 9) value = value.slice(0, 9);
+    const rawInput = e.target.value;
+    let digits = rawInput.replace(/\D/g, '');
+    if (digits.length > 9) digits = digits.slice(0, 9);
     
-    if (value.length > 5) {
-      value = `${value.slice(0, 3)}-${value.slice(3, 5)}-${value.slice(5)}`;
-    } else if (value.length > 3) {
-      value = `${value.slice(0, 3)}-${value.slice(3)}`;
+    // Auto-detect format based on existing dashes in input
+    // If user typed Canadian style (XXX-XXX-), use Canadian format
+    const hasCanadianPattern = /^\d{3}-\d{3}/.test(rawInput);
+    
+    let formatted;
+    if (hasCanadianPattern && digits.length > 3) {
+      // 🇨🇦 Canadian SIN format: XXX-XXX-XXX
+      if (digits.length > 6) {
+        formatted = `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+      } else if (digits.length > 3) {
+        formatted = `${digits.slice(0, 3)}-${digits.slice(3)}`;
+      } else {
+        formatted = digits;
+      }
+    } else {
+      // 🇺🇸 US SSN format: XXX-XX-XXXX (default)
+      if (digits.length > 5) {
+        formatted = `${digits.slice(0, 3)}-${digits.slice(3, 5)}-${digits.slice(5)}`;
+      } else if (digits.length > 3) {
+        formatted = `${digits.slice(0, 3)}-${digits.slice(3)}`;
+      } else {
+        formatted = digits;
+      }
     }
     
-    setFormData(prev => ({ ...prev, socialSecurityNumber: value }));
+    setFormData(prev => ({ ...prev, socialSecurityNumber: formatted }));
   };
 
   // Format currency as user types
@@ -1007,13 +1029,13 @@ export default function MasterBondSheet({ isProduction = false }) {
                 />
               </div>
               <div className="relative">
-                <label className="block text-gray-300 text-sm mb-1">Social Security #</label>
+                <label className="block text-gray-300 text-sm mb-1">SSN / SIN <span className="text-gray-500 text-xs">(🇺🇸/🇨🇦)</span></label>
                 <input
                   type="text"
                   name="socialSecurityNumber"
                   value={formData.socialSecurityNumber}
                   onChange={handleSSNChange}
-                  placeholder="XXX-XX-XXXX"
+                  placeholder="XXX-XX-XXXX or XXX-XXX-XXX"
                   maxLength={11}
                   className={getInputClassName('socialSecurityNumber', true)}
                 />
