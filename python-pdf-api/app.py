@@ -19,8 +19,9 @@ import copy  # 🎖️ NUCLEAR GRADE: Deep copy for buffer isolation
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# 🎖️ State code to full name mapping
+# 🎖️ State/Province code to full name mapping (US + Canada)
 STATE_NAMES = {
+    # 🇺🇸 US States
     'AL': 'Alabama', 'AK': 'Alaska', 'AZ': 'Arizona', 'AR': 'Arkansas', 'CA': 'California',
     'CO': 'Colorado', 'CT': 'Connecticut', 'DE': 'Delaware', 'FL': 'Florida', 'GA': 'Georgia',
     'HI': 'Hawaii', 'ID': 'Idaho', 'IL': 'Illinois', 'IN': 'Indiana', 'IA': 'Iowa',
@@ -31,7 +32,12 @@ STATE_NAMES = {
     'OK': 'Oklahoma', 'OR': 'Oregon', 'PA': 'Pennsylvania', 'RI': 'Rhode Island', 'SC': 'South Carolina',
     'SD': 'South Dakota', 'TN': 'Tennessee', 'TX': 'Texas', 'UT': 'Utah', 'VT': 'Vermont',
     'VA': 'Virginia', 'WA': 'Washington', 'WV': 'West Virginia', 'WI': 'Wisconsin', 'WY': 'Wyoming',
-    'DC': 'District of Columbia'
+    'DC': 'District of Columbia',
+    # 🇨🇦 Canadian Provinces & Territories
+    'AB': 'Alberta', 'BC': 'British Columbia', 'MB': 'Manitoba', 'NB': 'New Brunswick',
+    'NL': 'Newfoundland and Labrador', 'NS': 'Nova Scotia', 'NT': 'Northwest Territories',
+    'NU': 'Nunavut', 'ON': 'Ontario', 'PE': 'Prince Edward Island', 'QC': 'Quebec',
+    'SK': 'Saskatchewan', 'YT': 'Yukon'
 }
 
 def get_state_full_name(state_code):
