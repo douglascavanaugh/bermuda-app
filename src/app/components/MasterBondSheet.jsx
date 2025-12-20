@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Loader2, Upload, Download, Mail, Clipboard, Package } from 'lucide-react';
+import { Loader2, Upload, Download, Mail, Clipboard, Package, Camera, Image as ImageIcon } from 'lucide-react';
 
 // US State options for dropdowns
 const US_STATES = [
@@ -86,6 +86,13 @@ export default function MasterBondSheet({ isProduction = false }) {
   const [showPasteModal, setShowPasteModal] = useState(false);
   const [pasteData, setPasteData] = useState('');
   const [recipientEmail, setRecipientEmail] = useState('');
+  
+  // OCR Scan State
+  const [showOcrModal, setShowOcrModal] = useState(false);
+  const [ocrImage, setOcrImage] = useState(null);
+  const [ocrPreview, setOcrPreview] = useState(null);
+  const [isScanning, setIsScanning] = useState(false);
+  const [ocrError, setOcrError] = useState('');
   
   // Multi-paste batch state
   const [batchEntries, setBatchEntries] = useState([]);
@@ -500,6 +507,75 @@ export default function MasterBondSheet({ isProduction = false }) {
       value = parts[0] + '.' + parts[1].slice(0, 2);
     }
     setFormData(prev => ({ ...prev, amountOwed: value }));
+  };
+
+  // OCR Image Upload Handler
+  const handleOcrImageUpload = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setOcrError('Please upload an image file (JPEG, PNG, etc.)');
+      return;
+    }
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setOcrPreview(e.target.result);
+      // Extract base64 data (remove data:image/...;base64, prefix)
+      const base64Data = e.target.result.split(',')[1];
+      setOcrImage({ data: base64Data, mediaType: file.type });
+      setOcrError('');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // OCR Scan Handler
+  const handleOcrScan = async () => {
+    if (!ocrImage) {
+      setOcrError('Please upload an image first');
+      return;
+    }
+
+    setIsScanning(true);
+    setOcrError('');
+
+    try {
+      const response = await fetch('/api/ocr-scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          image: ocrImage.data,
+          mediaType: ocrImage.mediaType
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'OCR scan failed');
+      }
+
+      if (result.formData) {
+        // Fill form with extracted data
+        setFormData(prev => ({
+          ...prev,
+          ...result.formData
+        }));
+        setSuccessMessage('✅ Form data extracted successfully from image!');
+        setShowOcrModal(false);
+        setOcrImage(null);
+        setOcrPreview(null);
+      }
+
+    } catch (error) {
+      console.error('OCR Error:', error);
+      setOcrError(error.message || 'Failed to scan image');
+    } finally {
+      setIsScanning(false);
+    }
   };
 
   // Clear form
@@ -1192,6 +1268,18 @@ export default function MasterBondSheet({ isProduction = false }) {
                 Paste Data
               </button>
             )}
+            {/* 🎖️ DEV ONLY: OCR Scan */}
+            {!isProduction && (
+              <button
+                type="button"
+                onClick={() => setShowOcrModal(true)}
+                className="px-3 py-2 bg-cyan-600 text-white rounded font-mono hover:bg-cyan-500 flex items-center gap-2 text-sm"
+                title="Scan handwritten Master Bond Sheet with AI"
+              >
+                <Camera className="h-4 w-4" />
+                OCR Scan
+              </button>
+            )}
             {/* 🎖️ DEV ONLY: Export CSV */}
             {!isProduction && (
               <button
@@ -1318,6 +1406,91 @@ export default function MasterBondSheet({ isProduction = false }) {
                 >
                   <Clipboard className="h-4 w-4" />
                   Parse & Fill Form
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* OCR Scan Modal */}
+        {showOcrModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-gray-700 rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+              <h3 className="text-white font-mono-bold mb-4 text-lg flex items-center gap-2">
+                <Camera className="h-5 w-5" />
+                📷 OCR Scan - Handwritten Form
+              </h3>
+              <p className="text-gray-300 text-sm mb-4">
+                Upload a photo of a handwritten Master Bond Sheet form. Claude AI will extract the data and fill the form automatically.
+              </p>
+
+              {/* Image Upload Area */}
+              <div className="mb-4">
+                <label className="block">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleOcrImageUpload}
+                    className="hidden"
+                  />
+                  <div className="border-2 border-dashed border-gray-500 rounded-lg p-6 text-center cursor-pointer hover:border-cyan-400 transition-colors">
+                    {ocrPreview ? (
+                      <div className="space-y-3">
+                        <img 
+                          src={ocrPreview} 
+                          alt="Preview" 
+                          className="max-h-64 mx-auto rounded-lg"
+                        />
+                        <p className="text-gray-400 text-sm">Click to change image</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <ImageIcon className="h-12 w-12 mx-auto text-gray-400" />
+                        <p className="text-gray-300">Click to upload image</p>
+                        <p className="text-gray-500 text-sm">or drag and drop</p>
+                        <p className="text-gray-500 text-xs">Supports: JPEG, PNG, GIF, WebP</p>
+                      </div>
+                    )}
+                  </div>
+                </label>
+              </div>
+
+              {/* Error Message */}
+              {ocrError && (
+                <div className="mb-4 p-3 bg-red-900 border border-red-700 rounded text-red-200 text-sm">
+                  ❌ {ocrError}
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex justify-end space-x-2">
+                <button
+                  onClick={() => {
+                    setShowOcrModal(false);
+                    setOcrImage(null);
+                    setOcrPreview(null);
+                    setOcrError('');
+                  }}
+                  className="px-4 py-2 bg-gray-500 text-white rounded font-mono hover:bg-gray-600"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleOcrScan}
+                  disabled={!ocrImage || isScanning}
+                  className="px-4 py-2 bg-cyan-600 text-white rounded font-mono hover:bg-cyan-500 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isScanning ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Scanning...
+                    </>
+                  ) : (
+                    <>
+                      <Camera className="h-4 w-4" />
+                      Scan with AI
+                    </>
+                  )}
                 </button>
               </div>
             </div>

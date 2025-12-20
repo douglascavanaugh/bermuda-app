@@ -10,6 +10,7 @@
     "generate-hawaii-template": "python src/templates/create_hawaii_template.py"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "0.71.2",
     "@geist-ui/core": "^2.3.8",
     "@ungap/with-resolvers": "0.1.0",
     "@vercel/speed-insights": "1.0.12",
