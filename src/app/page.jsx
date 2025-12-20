@@ -22,9 +22,9 @@ export default function Home() {
     setIsProduction(!isLocalhost);
   }, []);
 
-  // PRODUCTION: Only show Master Bond Sheet
+  // PRODUCTION: Only show Master Bond Sheet with production mode enabled
   if (isProduction) {
-    return <MasterBondSheet />;
+    return <MasterBondSheet isProduction={true} />;
   }
 
   const handleModalSelect = (title) => {
@@ -46,7 +46,7 @@ export default function Home() {
       return <SPCForm />;
     }
     if (currentView === 'MASTER_BOND_SHEET') {
-      return <MasterBondSheet />;
+      return <MasterBondSheet isProduction={false} />;
     }
     if (selectedSection) {
       return (
