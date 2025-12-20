@@ -52,9 +52,9 @@ export async function POST(request) {
   "thirdPartyName": "Third party name or empty",
   "thirdPartyAddress": "Street address only",
   "thirdPartyCity": "City",
-  "thirdPartyState": "State abbreviation (2 letters)",
-  "thirdPartyZip": "ZIP code with brackets like [12345]",
-  "thirdPartyCounty": "County name with 'County' suffix",
+  "thirdPartyState": "State/Province abbreviation (2 letters, e.g., NY, CA, ON, BC)",
+  "thirdPartyZip": "ZIP/Postal code with brackets like [12345] or [M5V 2H1]",
+  "thirdPartyCounty": "County or Region name",
   "prisonNumber": "Prison number or empty",
   "prisonName": "Prison name or empty", 
   "prisonAddress": "Prison address or empty",
@@ -62,8 +62,8 @@ export async function POST(request) {
   "trialCourtType": "State" or "Federal",
   "courtAddress": "Court street address",
   "courtCity": "Court city",
-  "courtState": "Court state abbreviation (2 letters)",
-  "courtZip": "Court ZIP with brackets like [12345]",
+  "courtState": "Court state/province abbreviation (2 letters)",
+  "courtZip": "Court ZIP/Postal code with brackets like [12345] or [M5V 2H1]",
   "amountOwed": "Amount owed (numbers only, no $ or commas)"
 }
 

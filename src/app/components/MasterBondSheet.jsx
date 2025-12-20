@@ -5,24 +5,43 @@ import Link from 'next/link';
 import { Loader2, Upload, Download, Mail, Clipboard, Package, Camera, Image as ImageIcon } from 'lucide-react';
 
 // US State options for dropdowns
-const US_STATES = [
-  { code: 'AL', name: 'Alabama' }, { code: 'AK', name: 'Alaska' }, { code: 'AZ', name: 'Arizona' },
-  { code: 'AR', name: 'Arkansas' }, { code: 'CA', name: 'California' }, { code: 'CO', name: 'Colorado' },
-  { code: 'CT', name: 'Connecticut' }, { code: 'DE', name: 'Delaware' }, { code: 'FL', name: 'Florida' },
-  { code: 'GA', name: 'Georgia' }, { code: 'HI', name: 'Hawaii' }, { code: 'ID', name: 'Idaho' },
-  { code: 'IL', name: 'Illinois' }, { code: 'IN', name: 'Indiana' }, { code: 'IA', name: 'Iowa' },
-  { code: 'KS', name: 'Kansas' }, { code: 'KY', name: 'Kentucky' }, { code: 'LA', name: 'Louisiana' },
-  { code: 'ME', name: 'Maine' }, { code: 'MD', name: 'Maryland' }, { code: 'MA', name: 'Massachusetts' },
-  { code: 'MI', name: 'Michigan' }, { code: 'MN', name: 'Minnesota' }, { code: 'MS', name: 'Mississippi' },
-  { code: 'MO', name: 'Missouri' }, { code: 'MT', name: 'Montana' }, { code: 'NE', name: 'Nebraska' },
-  { code: 'NV', name: 'Nevada' }, { code: 'NH', name: 'New Hampshire' }, { code: 'NJ', name: 'New Jersey' },
-  { code: 'NM', name: 'New Mexico' }, { code: 'NY', name: 'New York' }, { code: 'NC', name: 'North Carolina' },
-  { code: 'ND', name: 'North Dakota' }, { code: 'OH', name: 'Ohio' }, { code: 'OK', name: 'Oklahoma' },
-  { code: 'OR', name: 'Oregon' }, { code: 'PA', name: 'Pennsylvania' }, { code: 'RI', name: 'Rhode Island' },
-  { code: 'SC', name: 'South Carolina' }, { code: 'SD', name: 'South Dakota' }, { code: 'TN', name: 'Tennessee' },
-  { code: 'TX', name: 'Texas' }, { code: 'UT', name: 'Utah' }, { code: 'VT', name: 'Vermont' },
-  { code: 'VA', name: 'Virginia' }, { code: 'WA', name: 'Washington' }, { code: 'WV', name: 'West Virginia' },
-  { code: 'WI', name: 'Wisconsin' }, { code: 'WY', name: 'Wyoming' }, { code: 'DC', name: 'District of Columbia' }
+// US States + Canadian Provinces/Territories
+const STATES_PROVINCES = [
+  // US States
+  { code: 'AL', name: 'Alabama', country: 'US' }, { code: 'AK', name: 'Alaska', country: 'US' }, 
+  { code: 'AZ', name: 'Arizona', country: 'US' }, { code: 'AR', name: 'Arkansas', country: 'US' }, 
+  { code: 'CA', name: 'California', country: 'US' }, { code: 'CO', name: 'Colorado', country: 'US' },
+  { code: 'CT', name: 'Connecticut', country: 'US' }, { code: 'DE', name: 'Delaware', country: 'US' }, 
+  { code: 'FL', name: 'Florida', country: 'US' }, { code: 'GA', name: 'Georgia', country: 'US' }, 
+  { code: 'HI', name: 'Hawaii', country: 'US' }, { code: 'ID', name: 'Idaho', country: 'US' },
+  { code: 'IL', name: 'Illinois', country: 'US' }, { code: 'IN', name: 'Indiana', country: 'US' }, 
+  { code: 'IA', name: 'Iowa', country: 'US' }, { code: 'KS', name: 'Kansas', country: 'US' }, 
+  { code: 'KY', name: 'Kentucky', country: 'US' }, { code: 'LA', name: 'Louisiana', country: 'US' },
+  { code: 'ME', name: 'Maine', country: 'US' }, { code: 'MD', name: 'Maryland', country: 'US' }, 
+  { code: 'MA', name: 'Massachusetts', country: 'US' }, { code: 'MI', name: 'Michigan', country: 'US' }, 
+  { code: 'MN', name: 'Minnesota', country: 'US' }, { code: 'MS', name: 'Mississippi', country: 'US' },
+  { code: 'MO', name: 'Missouri', country: 'US' }, { code: 'MT', name: 'Montana', country: 'US' }, 
+  { code: 'NE', name: 'Nebraska', country: 'US' }, { code: 'NV', name: 'Nevada', country: 'US' }, 
+  { code: 'NH', name: 'New Hampshire', country: 'US' }, { code: 'NJ', name: 'New Jersey', country: 'US' },
+  { code: 'NM', name: 'New Mexico', country: 'US' }, { code: 'NY', name: 'New York', country: 'US' }, 
+  { code: 'NC', name: 'North Carolina', country: 'US' }, { code: 'ND', name: 'North Dakota', country: 'US' }, 
+  { code: 'OH', name: 'Ohio', country: 'US' }, { code: 'OK', name: 'Oklahoma', country: 'US' },
+  { code: 'OR', name: 'Oregon', country: 'US' }, { code: 'PA', name: 'Pennsylvania', country: 'US' }, 
+  { code: 'RI', name: 'Rhode Island', country: 'US' }, { code: 'SC', name: 'South Carolina', country: 'US' }, 
+  { code: 'SD', name: 'South Dakota', country: 'US' }, { code: 'TN', name: 'Tennessee', country: 'US' },
+  { code: 'TX', name: 'Texas', country: 'US' }, { code: 'UT', name: 'Utah', country: 'US' }, 
+  { code: 'VT', name: 'Vermont', country: 'US' }, { code: 'VA', name: 'Virginia', country: 'US' }, 
+  { code: 'WA', name: 'Washington', country: 'US' }, { code: 'WV', name: 'West Virginia', country: 'US' },
+  { code: 'WI', name: 'Wisconsin', country: 'US' }, { code: 'WY', name: 'Wyoming', country: 'US' }, 
+  { code: 'DC', name: 'District of Columbia', country: 'US' },
+  // Canadian Provinces & Territories
+  { code: 'AB', name: 'Alberta', country: 'CA' }, { code: 'BC', name: 'British Columbia', country: 'CA' },
+  { code: 'MB', name: 'Manitoba', country: 'CA' }, { code: 'NB', name: 'New Brunswick', country: 'CA' },
+  { code: 'NL', name: 'Newfoundland and Labrador', country: 'CA' }, { code: 'NS', name: 'Nova Scotia', country: 'CA' },
+  { code: 'NT', name: 'Northwest Territories', country: 'CA' }, { code: 'NU', name: 'Nunavut', country: 'CA' },
+  { code: 'ON', name: 'Ontario', country: 'CA' }, { code: 'PE', name: 'Prince Edward Island', country: 'CA' },
+  { code: 'QC', name: 'Quebec', country: 'CA' }, { code: 'SK', name: 'Saskatchewan', country: 'CA' },
+  { code: 'YT', name: 'Yukon', country: 'CA' }
 ];
 
 // Initial form state
@@ -112,14 +131,14 @@ export default function MasterBondSheet({ isProduction = false }) {
     thirdPartyAddress: 'Third Party Address is required',
     thirdPartyCity: 'Third Party City is required',
     thirdPartyState: 'Third Party State is required',
-    thirdPartyZip: 'Third Party ZIP is required',
-    thirdPartyCounty: 'County is required',
+    thirdPartyZip: 'Third Party ZIP/Postal Code is required',
+    thirdPartyCounty: 'County/Region is required',
     trialCourtName: 'Trial Court Name is required',
     trialCourtType: 'Court Type (State/Federal) is required',
     courtAddress: 'Court Address is required',
     courtCity: 'Court City is required',
     courtState: 'Court State is required',
-    courtZip: 'Court ZIP is required',
+    courtZip: 'Court ZIP/Postal Code is required',
     amountOwed: 'Amount Owed is required',
   };
 
@@ -942,7 +961,7 @@ export default function MasterBondSheet({ isProduction = false }) {
                   className={getInputClassName('stateOfBirth', true)}
                 >
                   <option value="">Select State</option>
-                  {US_STATES.map(state => (
+                  {STATES_PROVINCES.map(state => (
                     <option key={state.code} value={state.name}>{state.name}</option>
                   ))}
                 </select>
@@ -1049,30 +1068,30 @@ export default function MasterBondSheet({ isProduction = false }) {
                   className={getInputClassName('thirdPartyState', true)}
                 >
                   <option value="">Select State</option>
-                  {US_STATES.map(state => (
+                  {STATES_PROVINCES.map(state => (
                     <option key={state.code} value={state.code}>{state.name}</option>
                   ))}
                 </select>
               </div>
               <div className="relative">
-                <label className="block text-gray-300 text-sm mb-1">ZIP Code</label>
+                <label className="block text-gray-300 text-sm mb-1">ZIP/Postal Code</label>
                 <input
                   type="text"
                   name="thirdPartyZip"
                   value={formData.thirdPartyZip}
                   onChange={handleChange}
-                  placeholder="e.g., 10567"
+                  placeholder="e.g., 10567 or M5V 2H1"
                   className={getInputClassName('thirdPartyZip', true)}
                 />
               </div>
               <div className="relative">
-                <label className="block text-gray-300 text-sm mb-1">County</label>
+                <label className="block text-gray-300 text-sm mb-1">County/Region</label>
                 <input
                   type="text"
                   name="thirdPartyCounty"
                   value={formData.thirdPartyCounty}
                   onChange={handleChange}
-                  placeholder="e.g., Westchester"
+                  placeholder="e.g., Westchester or Greater Toronto"
                   className={getInputClassName('thirdPartyCounty', true)}
                 />
               </div>
@@ -1199,20 +1218,20 @@ export default function MasterBondSheet({ isProduction = false }) {
                   className={getInputClassName('courtState', true)}
                 >
                   <option value="">Select State</option>
-                  {US_STATES.map(state => (
+                  {STATES_PROVINCES.map(state => (
                     <option key={state.code} value={state.code}>{state.name}</option>
                   ))}
                 </select>
                 {errors.courtState && <p className="text-red-400 text-xs mt-1">{errors.courtState}</p>}
               </div>
               <div className="relative">
-                <label className="block text-gray-300 text-sm mb-1">ZIP Code {isProduction && <span className="text-red-400">*</span>}</label>
+                <label className="block text-gray-300 text-sm mb-1">ZIP/Postal Code {isProduction && <span className="text-red-400">*</span>}</label>
                 <input
                   type="text"
                   name="courtZip"
                   value={formData.courtZip}
                   onChange={handleChange}
-                  placeholder="e.g., [28201-1423]"
+                  placeholder="e.g., [28201-1423] or M5V 2H1"
                   className={getInputClassName('courtZip', true)}
                 />
                 {errors.courtZip && <p className="text-red-400 text-xs mt-1">{errors.courtZip}</p>}
