@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from 'react';
-import { Upload, FileText, Loader2, Download, CheckCircle, XCircle, Package } from 'lucide-react';
+import { Upload, FileText, Loader2, Download, CheckCircle, XCircle, Package, Clipboard } from 'lucide-react';
 
 // Constants for the package
 const SURETY_COMPANY = {
@@ -18,16 +18,18 @@ export default function PackageBatchProcessor() {
   const [processedCount, setProcessedCount] = useState(0);
   const [results, setResults] = useState([]);
   const [error, setError] = useState('');
+  const [pasteData, setPasteData] = useState('');
+  const [showPasteModal, setShowPasteModal] = useState(false);
   const fileInputRef = useRef(null);
 
-  // Expected CSV headers (matches Master Bond Sheet export)
+  // Expected CSV headers (matches Master Bond Sheet export - 20 field format)
   const EXPECTED_HEADERS = [
     'clientFullName', 'dateBondExecuted', 'courtCaseNumber', 'pastConvictionsCaseNumbers',
     'birthCertificateNumber', 'stateOfBirth', 'dateOfBirth', 'uccTrustNumber',
     'socialSecurityNumber', 'ssnBackNumber', 'thirdPartyName', 'thirdPartyAddress',
-    'thirdPartyCity', 'thirdPartyState', 'thirdPartyCounty', 'prisonNumber',
-    'prisonName', 'prisonAddress', 'trialCourtName', 'trialCourtType',
-    'courtAddress', 'courtCity', 'courtState', 'amountOwed'
+    'thirdPartyCity', 'thirdPartyState', 'thirdPartyZip', 'thirdPartyCounty', 
+    'prisonNumber', 'prisonName', 'prisonAddress', 'trialCourtName', 'trialCourtType',
+    'courtAddress', 'courtCity', 'courtState', 'courtZip', 'amountOwed'
   ];
 
   // Parse CSV file
@@ -107,15 +109,43 @@ export default function PackageBatchProcessor() {
     }
   };
 
+  // Handle paste CSV data
+  const handlePasteCSV = () => {
+    setError('');
+    setResults([]);
+    
+    try {
+      if (!pasteData.trim()) {
+        throw new Error('No data pasted');
+      }
+      
+      const data = parseCSV(pasteData);
+      if (data.length === 0) {
+        throw new Error('No valid data rows found in pasted CSV');
+      }
+      setEntries(data);
+      setShowPasteModal(false);
+      setPasteData('');
+    } catch (err) {
+      setError(`Error parsing pasted CSV: ${err.message}`);
+    }
+  };
+
   // Build package data for a single entry (matches MasterBondSheet logic)
   const buildPackageData = (entry) => {
     const suretyBlock = `${SURETY_COMPANY.name}\n${SURETY_COMPANY.address}\n${SURETY_COMPANY.cityStateZip}`;
     const suretyBlockWithName = `${entry.clientFullName}\n${suretyBlock}`;
+    
+    // Build Third Party full address with ZIP (no county)
+    const thirdPartyZip = entry.thirdPartyZip || '';
     const thirdPartyFullAddress = [
       entry.thirdPartyAddress,
-      `${entry.thirdPartyCity}, ${entry.thirdPartyState} ${entry.thirdPartyCounty}`
+      `${entry.thirdPartyCity}, ${entry.thirdPartyState} ${thirdPartyZip}`
     ].filter(Boolean).join('\n');
-    const courtFullAddress = `${entry.courtAddress}\n${entry.courtCity}, ${entry.courtState}`;
+    
+    // Build Court full address with ZIP
+    const courtZip = entry.courtZip || '';
+    const courtFullAddress = `${entry.courtAddress}\n${entry.courtCity}, ${entry.courtState} ${courtZip}`;
     const courtReference = `${entry.trialCourtName} Attn: Clerk; ${entry.courtCaseNumber}`;
 
     return {
@@ -244,14 +274,15 @@ export default function PackageBatchProcessor() {
 
   return (
     <div className="space-y-6">
-      {/* Upload Section */}
+      {/* Upload/Paste Section */}
       <div className="bg-gray-800 rounded-lg p-6">
         <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
           <Upload className="h-6 w-6" />
-          Upload CSV File
+          Upload or Paste CSV Data
         </h3>
 
         <div className="flex flex-wrap gap-4 mb-4">
+          {/* File Upload */}
           <label className="flex-1 min-w-[200px]">
             <input
               ref={fileInputRef}
@@ -266,6 +297,16 @@ export default function PackageBatchProcessor() {
               <p className="text-gray-500 text-sm mt-1">or drag and drop</p>
             </div>
           </label>
+          
+          {/* Paste CSV Button */}
+          <div 
+            onClick={() => setShowPasteModal(true)}
+            className="flex-1 min-w-[200px] border-2 border-dashed border-gray-600 rounded-lg p-8 text-center cursor-pointer hover:border-green-500 transition-colors"
+          >
+            <Clipboard className="h-12 w-12 mx-auto text-gray-400 mb-2" />
+            <p className="text-gray-300">Click to paste CSV data</p>
+            <p className="text-gray-500 text-sm mt-1">from email or clipboard</p>
+          </div>
         </div>
 
         <button
@@ -282,6 +323,48 @@ export default function PackageBatchProcessor() {
           </div>
         )}
       </div>
+      
+      {/* Paste CSV Modal */}
+      {showPasteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+              <Clipboard className="h-6 w-6" />
+              Paste CSV Data
+            </h3>
+            
+            <p className="text-gray-400 text-sm mb-4">
+              Paste your CSV data below. Include the header row from the email.
+            </p>
+            
+            <textarea
+              value={pasteData}
+              onChange={(e) => setPasteData(e.target.value)}
+              placeholder={`Paste CSV data here...\n\nExample:\nclientFullName,dateBondExecuted,courtCaseNumber,...\n"John Doe","2025-01-15","123456789",...`}
+              className="w-full h-64 p-3 bg-gray-900 border border-gray-600 rounded text-gray-100 font-mono text-sm resize-none focus:border-green-500 focus:ring-1 focus:ring-green-500"
+            />
+            
+            <div className="flex justify-end gap-3 mt-4">
+              <button
+                onClick={() => {
+                  setShowPasteModal(false);
+                  setPasteData('');
+                }}
+                className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-500"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handlePasteCSV}
+                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-500 flex items-center gap-2"
+              >
+                <Clipboard className="h-4 w-4" />
+                Parse CSV Data
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Preview Section */}
       {entries.length > 0 && (
