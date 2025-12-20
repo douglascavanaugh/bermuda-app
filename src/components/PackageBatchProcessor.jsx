@@ -131,48 +131,48 @@ export default function PackageBatchProcessor() {
     }
   };
 
-  // Build package data for a single entry (matches MasterBondSheet logic)
-  const buildPackageData = (entry) => {
-    const suretyBlock = `${SURETY_COMPANY.name}\n${SURETY_COMPANY.address}\n${SURETY_COMPANY.cityStateZip}`;
-    const suretyBlockWithName = `${entry.clientFullName}\n${suretyBlock}`;
+  // Build package data for a single entry (EXACT match with MasterBondSheet)
+  const buildPackageData = (data) => {
+    const suretyBlockWithName = `${data.clientFullName}\n${SURETY_COMPANY.name}\n${SURETY_COMPANY.address}\n${SURETY_COMPANY.cityStateZip}`;
+    const suretyBlockNoName = `${SURETY_COMPANY.name}\n${SURETY_COMPANY.address}\n${SURETY_COMPANY.cityStateZip}`;
+    const courtReference = `${data.trialCourtName} Attn: Clerk; ${data.courtCaseNumber}`;
+    const sf28Field7 = `${data.courtCaseNumber} - ${GSA_REFERENCE}\nBirth Certificate - [${data.stateOfBirth} - ${data.birthCertificateNumber}] and Social Security - [${data.socialSecurityNumber}]; Bond Number; Non-Negotiable set off [${data.birthCertificateNumber}];\nDeposited with the United States Treasury`;
+    const sf28Field8 = `${courtReference} - ${GSA_REFERENCE}`;
+    const sf28Field9 = `Bid Bond issued by ${courtReference} - ${GSA_REFERENCE}`;
+    const of91Claims = `${courtReference} - ${GSA_REFERENCE}`;
     
-    // Build Third Party full address with ZIP (no county)
-    const thirdPartyZip = entry.thirdPartyZip || '';
-    const thirdPartyFullAddress = [
-      entry.thirdPartyAddress,
-      `${entry.thirdPartyCity}, ${entry.thirdPartyState} ${thirdPartyZip}`
-    ].filter(Boolean).join('\n');
-    
-    // Build Court full address with ZIP
-    const courtZip = entry.courtZip || '';
-    const courtFullAddress = `${entry.courtAddress}\n${entry.courtCity}, ${entry.courtState} ${courtZip}`;
-    const courtReference = `${entry.trialCourtName} Attn: Clerk; ${entry.courtCaseNumber}`;
+    // 🎖️ FIXED: Principal address uses ZIP, not County
+    // 🎖️ ZIP already includes brackets if provided, so don't double-add
+    const thirdPartyZip = data.thirdPartyZip || '';
+    const zipWithBrackets = thirdPartyZip.startsWith('[') ? thirdPartyZip : (thirdPartyZip ? `[${thirdPartyZip}]` : '');
+    const thirdPartyFullAddress = `${data.thirdPartyAddress}\n${data.thirdPartyCity}, ${data.thirdPartyState} ${zipWithBrackets}`;
 
     return {
-      dateBondExecuted: entry.dateBondExecuted,
-      clientFullName: entry.clientFullName,
-      stateOfBirth: entry.stateOfBirth,
-      courtCaseNumber: entry.courtCaseNumber,
-      socialSecurityNumber: entry.socialSecurityNumber,
-      birthCertificateNumber: entry.birthCertificateNumber,
-      uccTrustNumber: entry.uccTrustNumber,
+      dateBondExecuted: data.dateBondExecuted || 'Open',
+      clientFullName: data.clientFullName,
+      stateOfBirth: data.stateOfBirth,
+      courtCaseNumber: data.courtCaseNumber,
+      socialSecurityNumber: data.socialSecurityNumber,
+      birthCertificateNumber: data.birthCertificateNumber,
+      uccTrustNumber: data.uccTrustNumber,
       suretyBlockWithName,
-      suretyBlockNoName: suretyBlock,
+      suretyBlockNoName,
       courtReference,
-      trialCourtName: entry.trialCourtName,
-      trialCourtType: entry.trialCourtType || 'State',
-      courtFullAddress,
-      thirdPartyName: entry.thirdPartyName,
+      trialCourtName: data.trialCourtName,
+      trialCourtType: data.trialCourtType || 'State',
+      courtFullAddress: `${data.courtAddress}, ${data.courtCity}, ${data.courtState} ${data.courtZip || ''}`.trim(),
+      thirdPartyName: data.thirdPartyName,
       thirdPartyFullAddress,
-      thirdPartyCounty: entry.thirdPartyCounty,
-      prisonNumber: entry.prisonNumber,
-      prisonName: entry.prisonName,
-      prisonAddress: entry.prisonAddress,
-      sf28Field7: `${entry.courtCaseNumber} - ${GSA_REFERENCE}\nBirth Certificate - [${entry.stateOfBirth} - ${entry.birthCertificateNumber}] and Social Security - [${entry.socialSecurityNumber}]; Bond Number; Non-Negotiable set off [${entry.birthCertificateNumber}];\nDeposited with the United States Treasury`,
-      sf28Field8: `${entry.trialCourtName} Attn: Clerk; ${entry.courtCaseNumber} - ${GSA_REFERENCE}`,
-      sf28Field9: `Bid Bond issued by ${entry.trialCourtName} Attn: Clerk; ${entry.courtCaseNumber} - ${GSA_REFERENCE}`,
-      of91Claims: `${entry.trialCourtName} Attn: Clerk; ${entry.courtCaseNumber} - ${GSA_REFERENCE}`,
-      amountOwed: entry.amountOwed,
+      thirdPartyState: data.thirdPartyState,
+      thirdPartyCounty: data.thirdPartyCounty,
+      prisonNumber: data.prisonNumber,
+      prisonName: data.prisonName,
+      prisonAddress: data.prisonAddress,
+      sf28Field7,
+      sf28Field8,
+      sf28Field9,
+      of91Claims,
+      amountOwed: data.amountOwed,
       gsaReference: GSA_REFERENCE,
       suretyCompanyName: SURETY_COMPANY.name,
       suretyCompanyAddress: `${SURETY_COMPANY.address}\n${SURETY_COMPANY.cityStateZip}`
@@ -240,8 +240,8 @@ export default function PackageBatchProcessor() {
       setProcessedCount(i + 1);
       setResults([...newResults]);
 
-      // Small delay to prevent overwhelming the server
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // 🎖️ NUCLEAR-GRADE: 1 second delay between packages to prevent race conditions
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
     setIsProcessing(false);
