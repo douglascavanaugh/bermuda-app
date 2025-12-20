@@ -127,7 +127,7 @@ export default function MasterBondSheet({ isProduction = false }) {
     dateOfBirth: 'Date of Birth is required',
     uccTrustNumber: 'UCC Trust # is required',
     socialSecurityNumber: 'SSN/SIN is required (9 digits)',
-    ssnBackNumber: 'SSN Back Number is required',
+    // ssnBackNumber: NOT required (Canada doesn't have this)
     thirdPartyAddress: 'Third Party Address is required',
     thirdPartyCity: 'Third Party City is required',
     thirdPartyState: 'Third Party State is required',
@@ -665,8 +665,16 @@ export default function MasterBondSheet({ isProduction = false }) {
     setSuccessMessage('');
 
     try {
+      // 🎖️ SYNC: Apply same defaults as batch processing
+      const processedFormData = { ...formData };
+      
+      // If Date Bond Executed is empty, set to "Open"
+      if (!processedFormData.dateBondExecuted || processedFormData.dateBondExecuted.trim() === '') {
+        processedFormData.dateBondExecuted = 'Open';
+      }
+      
       // Build the template data with all mappings
-      const packageData = buildPackageData(formData);
+      const packageData = buildPackageData(processedFormData);
       
       console.log('📦 Generating Completed Package with data:', packageData);
 
@@ -675,7 +683,7 @@ export default function MasterBondSheet({ isProduction = false }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          masterData: formData,
+          masterData: processedFormData,  // 🎖️ Use processed data with defaults applied
           packageData: packageData,
           forms: ['SF24', 'SF25', 'SF28', 'SF1418', 'SF273', 'SF274', 'SF275', 'OF91']
         })
@@ -1041,13 +1049,13 @@ export default function MasterBondSheet({ isProduction = false }) {
                 />
               </div>
               <div className="relative">
-                <label className="block text-gray-300 text-sm mb-1"># on Back of SS Card</label>
+                <label className="block text-gray-300 text-sm mb-1"># on Back of SS Card <span className="text-gray-500 text-xs">(🇺🇸 only)</span></label>
                 <input
                   type="text"
                   name="ssnBackNumber"
                   value={formData.ssnBackNumber}
                   onChange={handleChange}
-                  placeholder="Number on back"
+                  placeholder="N/A for Canada"
                   className={getInputClassName('ssnBackNumber', true)}
                 />
               </div>

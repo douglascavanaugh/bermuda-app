@@ -194,13 +194,23 @@ export default function PackageBatchProcessor() {
       const entry = entries[i];
       
       try {
-        const packageData = buildPackageData(entry);
+        // 🎖️ SYNC: Apply defaults before processing
+        const processedEntry = { ...entry };
+        if (!processedEntry.dateBondExecuted || processedEntry.dateBondExecuted.trim() === '') {
+          processedEntry.dateBondExecuted = 'Open';
+        }
+        // ssnBackNumber is optional (Canada doesn't have it)
+        if (!processedEntry.ssnBackNumber) {
+          processedEntry.ssnBackNumber = '';
+        }
+        
+        const packageData = buildPackageData(processedEntry);
 
         const response = await fetch('/api/generate-bond-package', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            masterData: entry,
+            masterData: processedEntry,  // 🎖️ Use processed data with defaults
             packageData: packageData,
             forms: ['SF24', 'SF25', 'SF28', 'SF1418', 'SF273', 'SF274', 'SF275', 'OF91']
           })
