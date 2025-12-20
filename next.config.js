@@ -1,8 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // NUCLEAR RESET: Minimal config to avoid webpack hell
-  experimental: {
-    esmExternals: 'loose',
+  // Use webpack instead of turbopack (avoids venv symlink issues)
+  turbopack: {},
+  webpack: (config) => {
+    config.watchOptions = {
+      ...config.watchOptions,
+      ignored: ['**/python-pdf-api/**', '**/venv/**', '**/.venv/**'],
+    };
+    return config;
   },
 };
 
