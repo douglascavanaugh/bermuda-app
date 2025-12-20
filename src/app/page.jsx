@@ -6,17 +6,23 @@ import MasterBondSheet from './components/MasterBondSheet';
 
 export default function Home() {
   const [currentView, setCurrentView] = useState('menu');
-  const [isProduction, setIsProduction] = useState(false);
+  const [isProduction, setIsProduction] = useState(true); // Default to production (safe)
 
   useEffect(() => {
-    const appEnv = process.env.NEXT_PUBLIC_APP_ENV;
-    setIsProduction(appEnv === 'production');
+    // Check if we're on localhost (development)
+    const isLocalhost = typeof window !== 'undefined' && 
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    
+    // Development mode ONLY on localhost
+    setIsProduction(!isLocalhost);
   }, []);
 
+  // PRODUCTION: Only show Master Bond Sheet
   if (isProduction) {
     return <MasterBondSheet />;
   }
 
+  // DEVELOPMENT: Show full menu
   const renderContent = () => {
     switch (currentView) {
       case 'bermuda':
