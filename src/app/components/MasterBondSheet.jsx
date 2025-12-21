@@ -691,7 +691,10 @@ export default function MasterBondSheet({ isProduction = false }) {
       // Build the template data with all mappings
       const packageData = buildPackageData(processedFormData);
       
-      console.log('📦 Generating Completed Package with data:', packageData);
+      // 🔍 DEBUG: Log what we're sending
+      console.log('📦 MANUAL GENERATION - processedFormData:', JSON.stringify(processedFormData, null, 2));
+      console.log('📦 MANUAL GENERATION - packageData:', JSON.stringify(packageData, null, 2));
+      console.log('📦 MANUAL GENERATION - ssnBackNumber value:', processedFormData.ssnBackNumber);
 
       // Call the API to generate all forms
       const response = await fetch('/api/generate-bond-package', {
