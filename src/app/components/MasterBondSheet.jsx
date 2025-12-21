@@ -579,14 +579,47 @@ export default function MasterBondSheet({ isProduction = false }) {
       return;
     }
 
-    // Create preview
+    // 💰 COST OPTIMIZED: Compress image before sending to reduce API tokens
+    const compressImage = (dataUrl, maxWidth = 1200) => {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          
+          // Only resize if larger than maxWidth
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          // Compress to JPEG at 80% quality
+          const compressed = canvas.toDataURL('image/jpeg', 0.8);
+          resolve(compressed);
+        };
+        img.src = dataUrl;
+      });
+    };
+
+    // Create preview and compress
     const reader = new FileReader();
-    reader.onload = (e) => {
-      setOcrPreview(e.target.result);
+    reader.onload = async (e) => {
+      // Compress the image
+      const compressed = await compressImage(e.target.result);
+      setOcrPreview(compressed);
+      
       // Extract base64 data (remove data:image/...;base64, prefix)
-      const base64Data = e.target.result.split(',')[1];
-      setOcrImage({ data: base64Data, mediaType: file.type });
+      const base64Data = compressed.split(',')[1];
+      setOcrImage({ data: base64Data, mediaType: 'image/jpeg' });
       setOcrError('');
+      
+      console.log('💰 Image compressed for OCR - reducing API costs!');
     };
     reader.readAsDataURL(file);
   };

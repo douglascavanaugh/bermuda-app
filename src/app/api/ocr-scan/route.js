@@ -19,9 +19,10 @@ export async function POST(request) {
     }
 
     // Call Claude Vision API to extract text from the image
+    // 💰 COST OPTIMIZED: Haiku is ~75% cheaper than Sonnet for OCR tasks!
     const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 4096,
+      model: 'claude-3-5-haiku-20241022',  // Fast, accurate, cheap!
+      max_tokens: 1024,  // JSON response is small
       messages: [
         {
           role: 'user',
