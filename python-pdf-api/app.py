@@ -53,6 +53,12 @@ def get_state_full_name(state_code):
 app = Flask(__name__)
 CORS(app)  # Enable CORS for Next.js frontend
 
+# 🎖️ THERMONUCLEAR: Force garbage collection after EVERY request
+@app.after_request
+def cleanup_after_request(response):
+    gc.collect()
+    return response
+
 def auto_discover_pdf_forms():
     """
     🚀 AUTO-DISCOVERY: Scan public/docs/sample-pdfs/ for PDF files
@@ -1534,12 +1540,22 @@ def generate_bond_package():
         temp_file.write(output_buffer.getvalue())
         temp_file.close()
         
-        return send_file(
+        # 🎖️ THERMONUCLEAR: Clean up BEFORE returning
+        del merged_pdf
+        del output_buffer
+        gc.collect()
+        gc.collect()
+        
+        response = send_file(
             temp_file.name,
             mimetype='application/pdf',
             as_attachment=True,
             download_name=f"Completed_Package_{master_data.get('clientFullName', 'Client').replace(' ', '_')}.pdf"
         )
+        
+        # 🎖️ THERMONUCLEAR: Final cleanup
+        gc.collect()
+        return response
         
     except Exception as e:
         logger.error(f"❌ Bond package generation error: {str(e)}")
