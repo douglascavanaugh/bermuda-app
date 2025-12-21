@@ -53,12 +53,6 @@ def get_state_full_name(state_code):
 app = Flask(__name__)
 CORS(app)  # Enable CORS for Next.js frontend
 
-# 🎖️ THERMONUCLEAR: Force garbage collection after EVERY request
-@app.after_request
-def cleanup_after_request(response):
-    gc.collect()
-    return response
-
 def auto_discover_pdf_forms():
     """
     🚀 AUTO-DISCOVERY: Scan public/docs/sample-pdfs/ for PDF files
@@ -1361,11 +1355,6 @@ def generate_bond_package():
     
     Forms: SF24, SF25, SF28, SF1418, SF273, SF274, SF275, OF91
     """
-    # 🎖️ THERMONUCLEAR GRADE: Force complete cleanup BEFORE processing
-    # This fixes the "second request fails" issue
-    gc.collect()
-    gc.collect()  # Double collect for thorough cleanup
-    
     try:
         data = request.get_json()
         master_data = data.get('master_data', {})
@@ -1376,8 +1365,7 @@ def generate_bond_package():
         logger.info(f"📋 Master Data Keys: {list(master_data.keys())}")
         logger.info(f"📋 Forms to generate: {forms}")
         
-        # 🎖️ THERMONUCLEAR: Fresh PDF writer with no residual state
-        gc.collect()
+        # Create merged PDF writer
         merged_pdf = PdfWriter()
         
         # Form type to template mapping (template_type used for schema lookup)
@@ -1425,7 +1413,6 @@ def generate_bond_package():
                     retry_count += 1
                     if retry_count > 1:
                         logger.info(f"🔄 Retry #{retry_count} for {form_name}")
-                        gc.collect()  # Extra cleanup on retry
                     
                     # Map master/package data to form-specific fields
                     form_data = map_to_form_fields(form_name, master_data, package_data)
@@ -1493,7 +1480,6 @@ def generate_bond_package():
                     logger.error(f"❌ Error generating {form_name} (attempt {retry_count}/{MAX_RETRIES}): {str(form_error)}")
                     import traceback
                     logger.error(traceback.format_exc())
-                    gc.collect()
                     if retry_count >= MAX_RETRIES:
                         break
             
@@ -1507,19 +1493,37 @@ def generate_bond_package():
         logger.info(f"{'='*60}")
         gc.collect()  # Clean up before merge
         
+        # 🔒 CRITICAL FIX: Keep all readers alive until merge is complete!
+        # PyPDF2's add_page doesn't copy - it references the original page data.
+        # If reader goes out of scope, page data becomes invalid.
+        active_readers = []  # Keep readers alive during merge
+        
         for form_name, temp_path in temp_pdf_files:
             try:
-                # Read each temp file with a FRESH reader
+                # 🔒 CRITICAL: Read ENTIRE file into memory BEFORE creating reader
+                # This ensures data is fully loaded and not dependent on file handle
                 with open(temp_path, 'rb') as f:
-                    temp_reader = PdfReader(f)
-                    page_count = len(temp_reader.pages)
-                    for page in temp_reader.pages:
-                        merged_pdf.add_page(page)
-                    logger.info(f"✅ Merged {form_name}: {page_count} pages from {temp_path}")
+                    file_content = f.read()
+                
+                # Create reader from in-memory buffer (keeps data alive)
+                temp_buffer = io.BytesIO(file_content)
+                temp_reader = PdfReader(temp_buffer)
+                active_readers.append((temp_buffer, temp_reader))  # Keep alive!
+                
+                page_count = len(temp_reader.pages)
+                for page in temp_reader.pages:
+                    merged_pdf.add_page(page)
+                logger.info(f"✅ Merged {form_name}: {page_count} pages from {temp_path}")
+                
+                # Now safe to delete temp file (data is in memory)
+                try:
+                    os.unlink(temp_path)
+                except:
+                    pass
+                    
             except Exception as merge_error:
                 logger.error(f"❌ Error merging {form_name}: {merge_error}")
-            finally:
-                # Delete temp file after merging
+                # Still try to delete temp file on error
                 try:
                     os.unlink(temp_path)
                 except:
@@ -1529,6 +1533,17 @@ def generate_bond_package():
         output_buffer = io.BytesIO()
         merged_pdf.write(output_buffer)
         output_buffer.seek(0)
+        
+        # 🔒 CRITICAL: Now safe to clean up readers (merge is complete)
+        logger.info(f"🧹 Cleaning up {len(active_readers)} reader references...")
+        for buf, reader in active_readers:
+            try:
+                del reader
+                buf.close()
+            except:
+                pass
+        active_readers.clear()
+        gc.collect()
         
         logger.info(f"📦 PACKAGE COMPLETE!")
         logger.info(f"✅ Generated: {generated_forms}")
@@ -1540,22 +1555,12 @@ def generate_bond_package():
         temp_file.write(output_buffer.getvalue())
         temp_file.close()
         
-        # 🎖️ THERMONUCLEAR: Clean up BEFORE returning
-        del merged_pdf
-        del output_buffer
-        gc.collect()
-        gc.collect()
-        
-        response = send_file(
+        return send_file(
             temp_file.name,
             mimetype='application/pdf',
             as_attachment=True,
             download_name=f"Completed_Package_{master_data.get('clientFullName', 'Client').replace(' ', '_')}.pdf"
         )
-        
-        # 🎖️ THERMONUCLEAR: Final cleanup
-        gc.collect()
-        return response
         
     except Exception as e:
         logger.error(f"❌ Bond package generation error: {str(e)}")
@@ -1638,21 +1643,36 @@ def map_to_form_fields(form_name, master_data, package_data):
     - OF91 field corrections per user spec
     - Amount columns split into millions/thousands/hundreds/cents
     """
+    # 🔒 DEFENSIVE: Ensure package_data and master_data are dicts
+    if not package_data:
+        package_data = {}
+    if not master_data:
+        master_data = {}
+    
+    # 🔒 DEFENSIVE: Log what we received for debugging
+    logger.info(f"📋 map_to_form_fields({form_name}): package_data keys = {list(package_data.keys())}")
+    
     # Common constants
     SURETY_COMPANY = "Depository Trust Company"
     SURETY_ADDRESS = "55 Water St.\nNew York, New York [10041-0099]"
     SURETY_FULL = f"{SURETY_COMPANY}\n{SURETY_ADDRESS}"
     
-    # Extract data from package_data (frontend sends this)
-    client_name = package_data.get('clientFullName', master_data.get('clientFullName', ''))
-    third_party_address = package_data.get('thirdPartyFullAddress', '')
-    state_of_birth = package_data.get('stateOfBirth', '')
-    birth_cert_number = package_data.get('birthCertificateNumber', '')
-    date_bond_executed = format_date_mmddyyyy(package_data.get('dateBondExecuted', ''))
-    court_case_number = package_data.get('courtCaseNumber', '')
-    trial_court_name = package_data.get('trialCourtName', '')
-    court_full_address = package_data.get('courtFullAddress', '')
-    amount_owed = package_data.get('amountOwed', '')
+    # Extract data from package_data (frontend sends this) - with SAFE defaults
+    # 🔒 DEFENSIVE: Every field gets `or ''` to ensure never None
+    client_name = package_data.get('clientFullName', master_data.get('clientFullName', '')) or ''
+    third_party_address = package_data.get('thirdPartyFullAddress', '') or ''
+    state_of_birth = package_data.get('stateOfBirth', '') or ''
+    birth_cert_number = package_data.get('birthCertificateNumber', '') or ''
+    date_bond_executed = format_date_mmddyyyy(package_data.get('dateBondExecuted', '') or 'Open')
+    court_case_number = package_data.get('courtCaseNumber', '') or ''
+    trial_court_name = package_data.get('trialCourtName', '') or ''
+    court_full_address = package_data.get('courtFullAddress', '') or ''
+    amount_owed = package_data.get('amountOwed', '') or ''
+    social_security_number = package_data.get('socialSecurityNumber', '') or ''
+    ssn_back_number = package_data.get('ssnBackNumber', '') or ''
+    ucc_trust_number = package_data.get('uccTrustNumber', '') or ''
+    third_party_state = package_data.get('thirdPartyState', '') or ''
+    third_party_county = package_data.get('thirdPartyCounty', '') or ''
     
     # 🆕 Combined fields per user requirements
     principal_with_address = f"{client_name}\n{third_party_address}" if third_party_address else client_name
@@ -1729,8 +1749,10 @@ def map_to_form_fields(form_name, master_data, package_data):
         
         # 🎖️ FIXED: 'state' is Third Party's State (residence), not State of Birth
         # 🎖️ Convert 2-letter code to full state name
-        third_party_state_code = package_data.get('thirdPartyState', state_of_birth)
+        # 🔒 CRITICAL: Check for empty string, not just missing key!
+        third_party_state_code = package_data.get('thirdPartyState', '') or state_of_birth
         third_party_state_full = get_state_full_name(third_party_state_code)
+        logger.info(f"🎖️ SF28 State: thirdPartyState='{package_data.get('thirdPartyState', '')}' → fallback to stateOfBirth='{state_of_birth}' → full='{third_party_state_full}'")
         
         return {
             'state': third_party_state_full,  # 🎖️ Full state name (e.g., "Maryland" not "MD")
@@ -1748,6 +1770,14 @@ def map_to_form_fields(form_name, master_data, package_data):
     elif form_name == 'SF1418':
         # SF1418 schema fields: date, principal, sureties, state, contract, contract_2, checkbox1-4
         # Also has: millions, thousands, hundreds, cents
+        # 🔍 DEBUG: Log all SF1418 values
+        logger.info(f"🔍 SF1418 DEBUG - date_bond_executed: '{date_bond_executed}'")
+        logger.info(f"🔍 SF1418 DEBUG - principal_with_address: '{principal_with_address[:50] if principal_with_address else 'EMPTY'}...'")
+        logger.info(f"🔍 SF1418 DEBUG - surety_with_name: '{surety_with_name[:50] if surety_with_name else 'EMPTY'}...'")
+        logger.info(f"🔍 SF1418 DEBUG - state_with_birth_cert: '{state_with_birth_cert}'")
+        logger.info(f"🔍 SF1418 DEBUG - court_case_number: '{court_case_number}'")
+        logger.info(f"🔍 SF1418 DEBUG - amount: M={millions} T={thousands} H={hundreds} C={cents}")
+        
         return {
             'date': date_bond_executed,
             'principal': principal_with_address,  # 🆕 Name + Third Party Address

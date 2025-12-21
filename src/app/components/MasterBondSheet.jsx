@@ -88,13 +88,13 @@ const initialFormData = {
 const initialErrors = {};
 
 // Constants for the package
-// 🔒 SINGLE SOURCE OF TRUTH - Import from shared utility
-import { 
-  SURETY_COMPANY, 
-  ALL_FORMS,
-  applyDefaults, 
-  buildPackageData as buildPackageDataFromUtils
-} from '@/utils/bondPackageUtils';
+const SURETY_COMPANY = {
+  name: 'Depository Trust Company',
+  address: '55 Water St.',
+  cityStateZip: 'New York, New York [10041-0099]'
+};
+
+const GSA_REFERENCE = 'See GSA FORMS; sf 24; sf 25A; sf 28; sf 273; sf 274; sf 275 and 91.';
 
 export default function MasterBondSheet({ isProduction = false }) {
   const [formData, setFormData] = useState(initialFormData);
@@ -336,6 +336,9 @@ export default function MasterBondSheet({ isProduction = false }) {
     setIsGenerating(true);
     setBatchProgress({ current: 0, total: batchEntries.length });
     
+    // 🔒 WARM-UP: Small delay before first request to ensure server is ready
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
     const results = [];
     
     for (let i = 0; i < batchEntries.length; i++) {
@@ -348,26 +351,41 @@ export default function MasterBondSheet({ isProduction = false }) {
       ));
       
       try {
-        // 🔒 NUCLEAR GRADE: Exact same process as manual generation!
-        const dataCopy = { ...entry.data };
-        const processedData = applyDefaults(dataCopy);
+        // 🔒 CRITICAL: Deep clone to ensure COMPLETE isolation between entries!
+        const processedData = JSON.parse(JSON.stringify(entry.data));
         
-        // Ensure all fields have at least empty string (not undefined/null)
+        // Default dateBondExecuted to "Open" if empty
+        if (!processedData.dateBondExecuted || processedData.dateBondExecuted.trim() === '') {
+          processedData.dateBondExecuted = 'Open';
+        }
+        
+        // Ensure ssnBackNumber is at least empty string (not undefined)
+        if (!processedData.ssnBackNumber) {
+          processedData.ssnBackNumber = '';
+        }
+        
+        // Ensure trialCourtType has a default
+        if (!processedData.trialCourtType) {
+          processedData.trialCourtType = 'State';
+        }
+        
+        // 🔒 Ensure ALL fields have at least empty string (not undefined/null)
         Object.keys(processedData).forEach(key => {
           if (processedData[key] === undefined || processedData[key] === null) {
             processedData[key] = '';
           }
         });
         
-        const packageData = buildPackageData(processedData);
+        // 🔒 Deep clone packageData to prevent any reference sharing
+        const packageData = JSON.parse(JSON.stringify(buildPackageData(processedData)));
         
         const response = await fetch('/api/generate-bond-package', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            masterData: processedData,
+            masterData: processedData,  // 🔒 Use processed data with defaults!
             packageData: packageData,
-            forms: ALL_FORMS  // 🔒 Using shared constant
+            forms: ['SF24', 'SF25', 'SF28', 'SF1418', 'SF273', 'SF274', 'SF275', 'OF91']
           })
         });
         
@@ -383,7 +401,7 @@ export default function MasterBondSheet({ isProduction = false }) {
         
         // 🎖️ MILITARY GRADE: Add delay between packages to prevent race conditions
         if (i < batchEntries.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
+          await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay
         }
         
       } catch (error) {
@@ -579,47 +597,14 @@ export default function MasterBondSheet({ isProduction = false }) {
       return;
     }
 
-    // 💰 COST OPTIMIZED: Compress image before sending to reduce API tokens
-    const compressImage = (dataUrl, maxWidth = 1200) => {
-      return new Promise((resolve) => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          let width = img.width;
-          let height = img.height;
-          
-          // Only resize if larger than maxWidth
-          if (width > maxWidth) {
-            height = (height * maxWidth) / width;
-            width = maxWidth;
-          }
-          
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, width, height);
-          
-          // Compress to JPEG at 80% quality
-          const compressed = canvas.toDataURL('image/jpeg', 0.8);
-          resolve(compressed);
-        };
-        img.src = dataUrl;
-      });
-    };
-
-    // Create preview and compress
+    // Create preview
     const reader = new FileReader();
-    reader.onload = async (e) => {
-      // Compress the image
-      const compressed = await compressImage(e.target.result);
-      setOcrPreview(compressed);
-      
+    reader.onload = (e) => {
+      setOcrPreview(e.target.result);
       // Extract base64 data (remove data:image/...;base64, prefix)
-      const base64Data = compressed.split(',')[1];
-      setOcrImage({ data: base64Data, mediaType: 'image/jpeg' });
+      const base64Data = e.target.result.split(',')[1];
+      setOcrImage({ data: base64Data, mediaType: file.type });
       setOcrError('');
-      
-      console.log('💰 Image compressed for OCR - reducing API costs!');
     };
     reader.readAsDataURL(file);
   };
@@ -651,28 +636,10 @@ export default function MasterBondSheet({ isProduction = false }) {
       }
 
       if (result.formData) {
-        // Filter out empty values - don't overwrite defaults with empty strings
-        const filteredData = {};
-        for (const [key, value] of Object.entries(result.formData)) {
-          if (value && value.toString().trim() !== '') {
-            filteredData[key] = value;
-          }
-        }
-        
-        // Normalize trialCourtType if present
-        if (filteredData.trialCourtType) {
-          const courtType = filteredData.trialCourtType.toLowerCase().trim();
-          if (courtType === 'federal' || courtType === 'f') {
-            filteredData.trialCourtType = 'Federal';
-          } else {
-            filteredData.trialCourtType = 'State';  // Default to State
-          }
-        }
-        
-        // Fill form with extracted data (empty values won't overwrite defaults)
+        // Fill form with extracted data
         setFormData(prev => ({
           ...prev,
-          ...filteredData
+          ...result.formData
         }));
         setSuccessMessage('✅ Form data extracted successfully from image!');
         setShowOcrModal(false);
@@ -727,50 +694,28 @@ export default function MasterBondSheet({ isProduction = false }) {
     setSuccessMessage('');
 
     try {
-      // 🎖️ MILITARY GRADE: Add small delay to let Python API stabilize (same as batch)
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // 🎖️ SYNC: Apply same defaults as batch processing
+      const processedFormData = { ...formData };
       
-      // 🔒 NUCLEAR GRADE: Exact same process as batch generation!
-      // Step 1: Create a clean copy of formData (like batch does with entry.data)
-      const formDataCopy = { ...formData };
+      // If Date Bond Executed is empty, set to "Open"
+      if (!processedFormData.dateBondExecuted || processedFormData.dateBondExecuted.trim() === '') {
+        processedFormData.dateBondExecuted = 'Open';
+      }
       
-      // Step 2: Apply ALL defaults (same as batch)
-      const processedFormData = applyDefaults(formDataCopy);
-      
-      // Step 3: Extra normalization to match batch behavior exactly
-      // Ensure all fields have at least empty string (not undefined/null)
-      Object.keys(processedFormData).forEach(key => {
-        if (processedFormData[key] === undefined || processedFormData[key] === null) {
-          processedFormData[key] = '';
-        }
-      });
-      
-      // Step 4: Build package data (same function as batch)
+      // Build the template data with all mappings
       const packageData = buildPackageData(processedFormData);
       
-      // 🔍 DEBUG: Log what we're sending
-      console.log('📦 MANUAL GENERATION - processedFormData:', JSON.stringify(processedFormData, null, 2));
-      console.log('📦 MANUAL GENERATION - packageData:', JSON.stringify(packageData, null, 2));
+      console.log('📦 Generating Completed Package with data:', packageData);
 
-      // 🎖️ NUCLEAR GRADE: Add cache-busting timestamp to prevent stale responses
-      const timestamp = Date.now();
-      console.log('📦 MANUAL GENERATION - timestamp:', timestamp);
-
-      // Step 5: Call API with cache-busting
-      const response = await fetch(`/api/generate-bond-package?t=${timestamp}`, {
+      // Call the API to generate all forms
+      const response = await fetch('/api/generate-bond-package', {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          masterData: processedFormData,
+          masterData: processedFormData,  // 🎖️ Use processed data with defaults applied
           packageData: packageData,
-          forms: ALL_FORMS,  // 🔒 Using shared constant
-          _timestamp: timestamp  // 🎖️ Ensure unique request
-        }),
-        cache: 'no-store'  // 🎖️ Prevent fetch caching
+          forms: ['SF24', 'SF25', 'SF28', 'SF1418', 'SF273', 'SF274', 'SF275', 'OF91']
+        })
       });
 
       if (!response.ok) {
@@ -800,9 +745,86 @@ export default function MasterBondSheet({ isProduction = false }) {
   };
 
   // Build all the template data from master form
-  // 🔒 LOCKED: Using shared utility - DO NOT DUPLICATE!
-  // See: src/utils/bondPackageUtils.js
-  const buildPackageData = buildPackageDataFromUtils;
+  const buildPackageData = (data) => {
+    // 🔒 DEFENSIVE: Ensure all required fields have at least empty string defaults
+    const safeData = {
+      clientFullName: data.clientFullName || '',
+      trialCourtName: data.trialCourtName || '',
+      trialCourtType: data.trialCourtType || 'State',
+      courtCaseNumber: data.courtCaseNumber || '',
+      courtAddress: data.courtAddress || '',
+      courtCity: data.courtCity || '',
+      courtState: data.courtState || '',
+      courtZip: data.courtZip || '',
+      stateOfBirth: data.stateOfBirth || '',
+      birthCertificateNumber: data.birthCertificateNumber || '',
+      socialSecurityNumber: data.socialSecurityNumber || '',
+      ssnBackNumber: data.ssnBackNumber || '',
+      uccTrustNumber: data.uccTrustNumber || '',
+      dateBondExecuted: data.dateBondExecuted || 'Open',
+      thirdPartyName: data.thirdPartyName || '',
+      thirdPartyAddress: data.thirdPartyAddress || '',
+      thirdPartyCity: data.thirdPartyCity || '',
+      thirdPartyState: data.thirdPartyState || '',
+      thirdPartyZip: data.thirdPartyZip || '',
+      thirdPartyCounty: data.thirdPartyCounty || '',
+      prisonNumber: data.prisonNumber || '',
+      prisonName: data.prisonName || '',
+      prisonAddress: data.prisonAddress || '',
+      amountOwed: data.amountOwed || '',
+    };
+    
+    const suretyBlockWithName = `${safeData.clientFullName}\n${SURETY_COMPANY.name}\n${SURETY_COMPANY.address}\n${SURETY_COMPANY.cityStateZip}`;
+    const suretyBlockNoName = `${SURETY_COMPANY.name}\n${SURETY_COMPANY.address}\n${SURETY_COMPANY.cityStateZip}`;
+    const courtReference = `${safeData.trialCourtName} Attn: Clerk; ${safeData.courtCaseNumber}`;
+    const sf28Field7 = `${safeData.courtCaseNumber} - ${GSA_REFERENCE}\nBirth Certificate - [${safeData.stateOfBirth} - ${safeData.birthCertificateNumber}] and Social Security - [${safeData.socialSecurityNumber}]; Bond Number; Non-Negotiable set off [${safeData.birthCertificateNumber}];\nDeposited with the United States Treasury`;
+    const sf28Field8 = `${courtReference} - ${GSA_REFERENCE}`;
+    const sf28Field9 = `Bid Bond issued by ${courtReference} - ${GSA_REFERENCE}`;
+    const of91Claims = `${courtReference} - ${GSA_REFERENCE}`;
+    // 🎖️ FIXED: Principal address uses ZIP, not County
+    // Build address using safeData
+    const zipWithBrackets = safeData.thirdPartyZip.startsWith('[') 
+      ? safeData.thirdPartyZip 
+      : (safeData.thirdPartyZip ? `[${safeData.thirdPartyZip}]` : '');
+    
+    // Only build address if we have at least some address data
+    const thirdPartyFullAddress = safeData.thirdPartyAddress 
+      ? `${safeData.thirdPartyAddress}\n${safeData.thirdPartyCity}, ${safeData.thirdPartyState} ${zipWithBrackets}`.trim()
+      : '';
+
+    // 🔒 DEFENSIVE: Return using safeData to ensure no undefined values
+    return {
+      dateBondExecuted: safeData.dateBondExecuted,
+      clientFullName: safeData.clientFullName,
+      stateOfBirth: safeData.stateOfBirth,
+      courtCaseNumber: safeData.courtCaseNumber,
+      socialSecurityNumber: safeData.socialSecurityNumber,
+      birthCertificateNumber: safeData.birthCertificateNumber,
+      uccTrustNumber: safeData.uccTrustNumber,
+      suretyBlockWithName,
+      suretyBlockNoName,
+      courtReference,
+      trialCourtName: safeData.trialCourtName,
+      trialCourtType: safeData.trialCourtType,
+      courtFullAddress: `${safeData.courtAddress}, ${safeData.courtCity}, ${safeData.courtState} ${safeData.courtZip}`.trim(),
+      thirdPartyName: safeData.thirdPartyName,
+      thirdPartyFullAddress,
+      thirdPartyState: safeData.thirdPartyState,
+      thirdPartyCounty: safeData.thirdPartyCounty,
+      prisonNumber: safeData.prisonNumber,
+      prisonName: safeData.prisonName,
+      prisonAddress: safeData.prisonAddress,
+      sf28Field7,
+      sf28Field8,
+      sf28Field9,
+      of91Claims,
+      amountOwed: safeData.amountOwed,
+      gsaReference: GSA_REFERENCE,
+      suretyCompanyName: SURETY_COMPANY.name,
+      suretyCompanyAddress: `${SURETY_COMPANY.address}\n${SURETY_COMPANY.cityStateZip}`,
+      ssnBackNumber: safeData.ssnBackNumber  // 🔒 Ensure this is always included
+    };
+  };
 
   // Input field styling (matching Hawaii/SPC)
   const getInputClassName = (fieldName, fullWidth = false) => `
