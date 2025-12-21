@@ -1355,6 +1355,11 @@ def generate_bond_package():
     
     Forms: SF24, SF25, SF28, SF1418, SF273, SF274, SF275, OF91
     """
+    # 🎖️ THERMONUCLEAR GRADE: Force complete cleanup BEFORE processing
+    # This fixes the "second request fails" issue
+    gc.collect()
+    gc.collect()  # Double collect for thorough cleanup
+    
     try:
         data = request.get_json()
         master_data = data.get('master_data', {})
@@ -1365,7 +1370,8 @@ def generate_bond_package():
         logger.info(f"📋 Master Data Keys: {list(master_data.keys())}")
         logger.info(f"📋 Forms to generate: {forms}")
         
-        # Create merged PDF writer
+        # 🎖️ THERMONUCLEAR: Fresh PDF writer with no residual state
+        gc.collect()
         merged_pdf = PdfWriter()
         
         # Form type to template mapping (template_type used for schema lookup)
