@@ -147,8 +147,17 @@ export default function PackageBatchProcessor() {
       const entry = entries[i];
       
       try {
-        // 🔒 LOCKED: Using shared utility for defaults - DO NOT DUPLICATE!
-        const processedEntry = applyDefaults(entry);
+        // 🔒 NUCLEAR GRADE: Same process as MasterBondSheet!
+        const entryCopy = { ...entry };
+        const processedEntry = applyDefaults(entryCopy);
+        
+        // Ensure all fields have at least empty string (not undefined/null)
+        Object.keys(processedEntry).forEach(key => {
+          if (processedEntry[key] === undefined || processedEntry[key] === null) {
+            processedEntry[key] = '';
+          }
+        });
+        
         const packageData = buildPackageData(processedEntry);
 
         const response = await fetch('/api/generate-bond-package', {

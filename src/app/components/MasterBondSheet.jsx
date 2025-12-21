@@ -348,8 +348,17 @@ export default function MasterBondSheet({ isProduction = false }) {
       ));
       
       try {
-        // 🔒 LOCKED: Using shared utility for defaults
-        const processedData = applyDefaults(entry.data);
+        // 🔒 NUCLEAR GRADE: Exact same process as manual generation!
+        const dataCopy = { ...entry.data };
+        const processedData = applyDefaults(dataCopy);
+        
+        // Ensure all fields have at least empty string (not undefined/null)
+        Object.keys(processedData).forEach(key => {
+          if (processedData[key] === undefined || processedData[key] === null) {
+            processedData[key] = '';
+          }
+        });
+        
         const packageData = buildPackageData(processedData);
         
         const response = await fetch('/api/generate-bond-package', {
@@ -685,18 +694,29 @@ export default function MasterBondSheet({ isProduction = false }) {
     setSuccessMessage('');
 
     try {
-      // 🔒 LOCKED: Using shared utility for defaults - DO NOT DUPLICATE!
-      const processedFormData = applyDefaults(formData);
+      // 🔒 NUCLEAR GRADE: Exact same process as batch generation!
+      // Step 1: Create a clean copy of formData (like batch does with entry.data)
+      const formDataCopy = { ...formData };
       
-      // Build the template data with all mappings
+      // Step 2: Apply ALL defaults (same as batch)
+      const processedFormData = applyDefaults(formDataCopy);
+      
+      // Step 3: Extra normalization to match batch behavior exactly
+      // Ensure all fields have at least empty string (not undefined/null)
+      Object.keys(processedFormData).forEach(key => {
+        if (processedFormData[key] === undefined || processedFormData[key] === null) {
+          processedFormData[key] = '';
+        }
+      });
+      
+      // Step 4: Build package data (same function as batch)
       const packageData = buildPackageData(processedFormData);
       
       // 🔍 DEBUG: Log what we're sending
       console.log('📦 MANUAL GENERATION - processedFormData:', JSON.stringify(processedFormData, null, 2));
       console.log('📦 MANUAL GENERATION - packageData:', JSON.stringify(packageData, null, 2));
-      console.log('📦 MANUAL GENERATION - ssnBackNumber value:', processedFormData.ssnBackNumber);
 
-      // Call the API to generate all forms
+      // Step 5: Call API (exact same as batch)
       const response = await fetch('/api/generate-bond-package', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
