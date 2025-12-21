@@ -749,15 +749,25 @@ export default function MasterBondSheet({ isProduction = false }) {
       console.log('📦 MANUAL GENERATION - processedFormData:', JSON.stringify(processedFormData, null, 2));
       console.log('📦 MANUAL GENERATION - packageData:', JSON.stringify(packageData, null, 2));
 
-      // Step 5: Call API (exact same as batch)
-      const response = await fetch('/api/generate-bond-package', {
+      // 🎖️ NUCLEAR GRADE: Add cache-busting timestamp to prevent stale responses
+      const timestamp = Date.now();
+      console.log('📦 MANUAL GENERATION - timestamp:', timestamp);
+
+      // Step 5: Call API with cache-busting
+      const response = await fetch(`/api/generate-bond-package?t=${timestamp}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        },
         body: JSON.stringify({
           masterData: processedFormData,
           packageData: packageData,
-          forms: ALL_FORMS  // 🔒 Using shared constant
-        })
+          forms: ALL_FORMS,  // 🔒 Using shared constant
+          _timestamp: timestamp  // 🎖️ Ensure unique request
+        }),
+        cache: 'no-store'  // 🎖️ Prevent fetch caching
       });
 
       if (!response.ok) {
