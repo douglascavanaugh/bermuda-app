@@ -727,6 +727,9 @@ export default function MasterBondSheet({ isProduction = false }) {
     setSuccessMessage('');
 
     try {
+      // 🎖️ MILITARY GRADE: Add small delay to let Python API stabilize (same as batch)
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       // 🔒 NUCLEAR GRADE: Exact same process as batch generation!
       // Step 1: Create a clean copy of formData (like batch does with entry.data)
       const formDataCopy = { ...formData };
