@@ -282,20 +282,96 @@ export default function MasterBondSheet({ isProduction = false }) {
     return parsedData;
   };
 
-  // Handle paste data submission - supports single OR multiple entries separated by ---
-  const handlePasteSubmit = () => {
+  // 🎖️ CSV Headers for export (matches PackageBatchProcessor format)
+  const CSV_HEADERS = [
+    'clientFullName', 'dateBondExecuted', 'courtCaseNumber', 'pastConvictionsCaseNumbers',
+    'birthCertificateNumber', 'stateOfBirth', 'dateOfBirth', 'uccTrustNumber',
+    'socialSecurityNumber', 'ssnBackNumber', 'thirdPartyName', 'thirdPartyAddress',
+    'thirdPartyCity', 'thirdPartyState', 'thirdPartyZip', 'thirdPartyCounty',
+    'prisonNumber', 'prisonName', 'prisonAddress', 'trialCourtName', 'trialCourtType',
+    'courtAddress', 'courtCity', 'courtState', 'courtZip', 'amountOwed'
+  ];
+
+  // 🎖️ AUTO-FILL: If Date Bond Executed is empty, set to "Open"
+  const autoFillDefaults = (entry) => {
+    if (!entry.dateBondExecuted || entry.dateBondExecuted.trim() === '') {
+      entry.dateBondExecuted = 'Open';
+    }
+    return entry;
+  };
+
+  // 🎖️ Convert parsed entries to CSV string
+  const entriesToCSV = (parsedEntries) => {
+    const headerRow = CSV_HEADERS.join(',');
+    const dataRows = parsedEntries.map(entry => {
+      return CSV_HEADERS.map(header => {
+        const value = entry[header] || '';
+        // Escape quotes and wrap in quotes
+        return `"${String(value).replace(/"/g, '""')}"`;
+      }).join(',');
+    });
+    return headerRow + '\n' + dataRows.join('\n');
+  };
+
+  // 🎖️ PRODUCTION: Generate CSV and email it
+  const handleProductionPasteSubmit = () => {
     if (!pasteData.trim()) {
       setSuccessMessage('❌ Error: No data to paste');
       return;
     }
+
+    // Parse all entries (single or multiple)
+    const entries = pasteData.split(/\n---+\n/).filter(e => e.trim());
+    const parsedEntries = entries.map(entry => {
+      const parsed = parsePastedData(entry);
+      autoFillDefaults(parsed);
+      return parsed;
+    });
+
+    if (parsedEntries.length === 0) {
+      setSuccessMessage('❌ Error: Could not parse any entries');
+      return;
+    }
+
+    // Generate CSV
+    const csvContent = entriesToCSV(parsedEntries);
     
-    // 🎖️ AUTO-FILL: If Date Bond Executed is empty, set to "Open"
-    const autoFillDefaults = (entry) => {
-      if (!entry.dateBondExecuted || entry.dateBondExecuted.trim() === '') {
-        entry.dateBondExecuted = 'Open';
-      }
-      return entry;
-    };
+    // Create email with CSV in body
+    const subject = encodeURIComponent(`Master Bond Sheet Data - ${parsedEntries.length} Entries - ${new Date().toLocaleDateString()}`);
+    const body = encodeURIComponent(
+      `Master Bond Sheet Data Export\n` +
+      `==============================\n\n` +
+      `Total Entries: ${parsedEntries.length}\n` +
+      `Date: ${new Date().toLocaleString()}\n\n` +
+      `Client Names:\n` +
+      parsedEntries.map((e, i) => `  ${i + 1}. ${e.clientFullName || 'Unknown'}`).join('\n') +
+      `\n\n==============================\n` +
+      `CSV DATA (paste into batch processor):\n` +
+      `==============================\n\n` +
+      csvContent
+    );
+
+    // Open email client
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+    
+    setShowPasteModal(false);
+    setPasteData('');
+    setSuccessMessage(`✅ Email opened with ${parsedEntries.length} entries as CSV!`);
+  };
+
+  // Handle paste data submission - supports single OR multiple entries separated by ---
+  const handlePasteSubmit = () => {
+    // 🎖️ PRODUCTION MODE: Generate CSV and email instead of batch processing
+    if (isProduction) {
+      handleProductionPasteSubmit();
+      return;
+    }
+
+    // 🎖️ DEVELOPMENT MODE: Parse and batch process
+    if (!pasteData.trim()) {
+      setSuccessMessage('❌ Error: No data to paste');
+      return;
+    }
     
     // Check for multiple entries (separated by ---)
     const entries = pasteData.split(/\n---+\n/).filter(e => e.trim());
@@ -304,7 +380,6 @@ export default function MasterBondSheet({ isProduction = false }) {
       // Multiple entries - parse all and show batch preview
       const parsedEntries = entries.map((entry, index) => {
         const parsed = parsePastedData(entry);
-        // 🎖️ Auto-fill defaults (e.g., "Open" for empty dates)
         autoFillDefaults(parsed);
         return {
           id: index + 1,
@@ -322,7 +397,6 @@ export default function MasterBondSheet({ isProduction = false }) {
     } else {
       // Single entry - fill the form as usual
       const parsed = parsePastedData(pasteData);
-      // 🎖️ Auto-fill defaults (e.g., "Open" for empty dates)
       autoFillDefaults(parsed);
       
       setFormData(parsed);
@@ -1424,10 +1498,10 @@ export default function MasterBondSheet({ isProduction = false }) {
               type="button"
               onClick={() => setShowPasteModal(true)}
               className="px-3 py-2 bg-purple-600 text-white rounded font-mono hover:bg-purple-500 flex items-center gap-2 text-sm"
-              title="Paste numbered data from Master Bond Sheet"
+              title={isProduction ? "Paste data and generate CSV for email" : "Paste numbered data from Master Bond Sheet"}
             >
               <Clipboard className="h-4 w-4" />
-              Paste Data
+              {isProduction ? 'Paste & Email CSV' : 'Paste Data'}
             </button>
             {/* 🎖️ DEV ONLY: OCR Scan */}
             {!isProduction && (
@@ -1516,9 +1590,14 @@ export default function MasterBondSheet({ isProduction = false }) {
         {showPasteModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-gray-700 rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-              <h3 className="text-white font-mono-bold mb-4 text-lg">📋 Paste Master Bond Sheet Data</h3>
+              <h3 className="text-white font-mono-bold mb-4 text-lg">
+                {isProduction ? '📧 Paste Data & Email CSV' : '📋 Paste Master Bond Sheet Data'}
+              </h3>
               <p className="text-gray-300 text-sm mb-4">
-                Paste your numbered data below. Format should be:
+                {isProduction 
+                  ? 'Paste your numbered data below. It will be converted to CSV and emailed.'
+                  : 'Paste your numbered data below. Format should be:'
+                }
               </p>
               <pre className="bg-gray-800 text-gray-300 p-3 rounded text-xs mb-4 overflow-x-auto">
 {`1. Client Full Name
@@ -1542,8 +1621,12 @@ export default function MasterBondSheet({ isProduction = false }) {
 19. Court Address, City, ST [ZIP]
 20. Amount Owed`}
               </pre>
-              <p className="text-green-400 text-xs mb-2 bg-gray-800 p-2 rounded">
-                💡 <strong>Multi-entry support:</strong> Paste multiple entries separated by <code className="bg-gray-900 px-1">---</code> on its own line
+              <p className={`${isProduction ? 'text-blue-400' : 'text-green-400'} text-xs mb-2 bg-gray-800 p-2 rounded`}>
+                {isProduction ? (
+                  <>📧 <strong>Production Mode:</strong> Data will be converted to CSV format and opened in your email client.</>
+                ) : (
+                  <>💡 <strong>Multi-entry support:</strong> Paste multiple entries separated by <code className="bg-gray-900 px-1">---</code> on its own line</>
+                )}
               </p>
               <textarea
                 value={pasteData}
@@ -1563,10 +1646,10 @@ export default function MasterBondSheet({ isProduction = false }) {
                 </button>
                 <button
                   onClick={handlePasteSubmit}
-                  className="px-4 py-2 bg-purple-600 text-white rounded font-mono hover:bg-purple-500 flex items-center gap-2"
+                  className={`px-4 py-2 ${isProduction ? 'bg-blue-600 hover:bg-blue-500' : 'bg-purple-600 hover:bg-purple-500'} text-white rounded font-mono flex items-center gap-2`}
                 >
-                  <Clipboard className="h-4 w-4" />
-                  Parse & Fill Form
+                  {isProduction ? <Mail className="h-4 w-4" /> : <Clipboard className="h-4 w-4" />}
+                  {isProduction ? 'Generate CSV & Email' : 'Parse & Fill Form'}
                 </button>
               </div>
             </div>
