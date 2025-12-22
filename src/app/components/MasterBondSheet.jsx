@@ -118,6 +118,10 @@ export default function MasterBondSheet({ isProduction = false }) {
   const [batchEntries, setBatchEntries] = useState([]);
   const [showBatchPreview, setShowBatchPreview] = useState(false);
   const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
+  
+  // 🎖️ PRODUCTION: Validation error modal state
+  const [showValidationErrorModal, setShowValidationErrorModal] = useState(false);
+  const [validationErrors, setValidationErrors] = useState([]);
 
   // 🎖️ PRODUCTION MODE: Required fields validation
   const REQUIRED_FIELDS = {
@@ -365,12 +369,10 @@ export default function MasterBondSheet({ isProduction = false }) {
     const entriesWithErrors = validationResults.filter(r => r.errors.length > 0);
 
     if (entriesWithErrors.length > 0) {
-      // Build error message showing which entries have issues
-      const errorMessages = entriesWithErrors.map(e => 
-        `Entry #${e.entryNumber} (${e.clientName}):\n  • ${e.errors.join('\n  • ')}`
-      ).join('\n\n');
-      
-      setSuccessMessage(`❌ Validation Failed!\n\n${entriesWithErrors.length} of ${parsedEntries.length} entries have missing required fields:\n\n${errorMessages}`);
+      // 🎖️ Show validation error modal (front and center!)
+      setValidationErrors(entriesWithErrors);
+      setShowValidationErrorModal(true);
+      setShowPasteModal(false); // Close paste modal to show error modal
       return;
     }
 
@@ -988,6 +990,63 @@ export default function MasterBondSheet({ isProduction = false }) {
       : 'border-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500'}
     hover:bg-gray-700
   `;
+
+  // 🎖️ PRODUCTION: Validation Error Modal (front and center!)
+  const ValidationErrorModal = () => (
+    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[100]">
+      <div className="bg-red-900 border-4 border-red-500 rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden flex flex-col shadow-2xl">
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-4 pb-4 border-b border-red-700">
+          <div className="bg-red-500 rounded-full p-2">
+            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <div>
+            <h3 className="text-2xl font-bold text-white">⚠️ Validation Failed!</h3>
+            <p className="text-red-300">
+              {validationErrors.length} of {validationErrors.length} entries have missing required fields
+            </p>
+          </div>
+        </div>
+        
+        {/* Scrollable Error List */}
+        <div className="flex-1 overflow-y-auto space-y-4 mb-4">
+          {validationErrors.map((entry, idx) => (
+            <div key={idx} className="bg-red-950 border border-red-700 rounded-lg p-4">
+              <h4 className="text-lg font-bold text-red-300 mb-2">
+                Entry #{entry.entryNumber}: {entry.clientName}
+              </h4>
+              <ul className="space-y-1">
+                {entry.errors.map((error, errIdx) => (
+                  <li key={errIdx} className="flex items-start gap-2 text-red-200">
+                    <span className="text-red-400 mt-0.5">✗</span>
+                    <span>{error}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+        
+        {/* Footer */}
+        <div className="flex justify-between items-center pt-4 border-t border-red-700">
+          <p className="text-red-300 text-sm">
+            Please fix these issues and try again.
+          </p>
+          <button
+            onClick={() => {
+              setShowValidationErrorModal(false);
+              setShowPasteModal(true); // Re-open paste modal to fix data
+            }}
+            className="px-6 py-3 bg-red-600 text-white rounded-lg font-bold hover:bg-red-500 flex items-center gap-2"
+          >
+            ← Back to Edit
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 
   // Confirmation Dialog
   const ConfirmationDialog = () => (
@@ -1624,6 +1683,9 @@ export default function MasterBondSheet({ isProduction = false }) {
         </form>
 
         {showConfirmDialog && <ConfirmationDialog />}
+        
+        {/* 🎖️ PRODUCTION: Validation Error Modal (front and center!) */}
+        {showValidationErrorModal && <ValidationErrorModal />}
         
         {showBatchPreview && <BatchPreviewDialog />}
         
