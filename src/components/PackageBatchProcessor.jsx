@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { Upload, FileText, Loader2, Download, CheckCircle, XCircle, Package, Clipboard } from 'lucide-react';
+import JSZip from 'jszip';
 
 // Constants for the package
 const SURETY_COMPANY = {
@@ -189,6 +190,7 @@ export default function PackageBatchProcessor() {
     setError('');
 
     const newResults = [];
+    const successfulBlobs = []; // 🎯 Collect blobs for ZIP
 
     for (let i = 0; i < entries.length; i++) {
       const entry = entries[i];
@@ -220,16 +222,10 @@ export default function PackageBatchProcessor() {
           throw new Error(`HTTP ${response.status}: ${await response.text()}`);
         }
 
-        // Download the PDF
+        // 🎯 Collect blob for ZIP (don't download yet!)
         const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `Completed_Package_${entry.clientFullName?.replace(/\s+/g, '_') || `Entry_${i + 1}`}.pdf`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+        const fileName = `Completed_Package_${entry.clientFullName?.replace(/\s+/g, '_') || `Entry_${i + 1}`}.pdf`;
+        successfulBlobs.push({ name: fileName, blob });
 
         newResults.push({
           index: i + 1,
@@ -251,7 +247,57 @@ export default function PackageBatchProcessor() {
       setResults([...newResults]);
 
       // 🎖️ NUCLEAR-GRADE: 1 second delay between packages to prevent race conditions
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      if (i < entries.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+
+    // 🎯 ZIP BUNDLE: Download all successful PDFs as a single ZIP
+    const dateStr = new Date().toISOString().split('T')[0];
+    
+    if (successfulBlobs.length === 1) {
+      // Single file - download directly
+      const { name, blob } = successfulBlobs[0];
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } else if (successfulBlobs.length > 1) {
+      // Multiple files - bundle into ZIP!
+      console.log(`📦 Creating ZIP with ${successfulBlobs.length} files...`);
+      try {
+        const zip = new JSZip();
+        
+        for (const { name, blob } of successfulBlobs) {
+          console.log(`📄 Adding to ZIP: ${name} (${blob.size} bytes)`);
+          zip.file(name, blob);
+        }
+        
+        console.log('🔧 Generating ZIP blob...');
+        const zipBlob = await zip.generateAsync({ 
+          type: 'blob',
+          compression: 'DEFLATE',
+          compressionOptions: { level: 6 }
+        });
+        console.log(`✅ ZIP created: ${zipBlob.size} bytes`);
+        
+        const url = URL.createObjectURL(zipBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `Batch_Packages_${successfulBlobs.length}_${dateStr}.zip`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        console.log('📥 ZIP download triggered!');
+      } catch (zipError) {
+        console.error('❌ ZIP creation failed:', zipError);
+        setError(`ZIP creation failed: ${zipError.message}. Files were generated but could not be bundled.`);
+      }
     }
 
     setIsProcessing(false);

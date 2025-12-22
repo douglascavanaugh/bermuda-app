@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Loader2, Upload, Download, Mail, Clipboard, Package, Camera, Image as ImageIcon } from 'lucide-react';
+import JSZip from 'jszip';
 
 // US State options for dropdowns
 // US States + Canadian Provinces/Territories
@@ -416,42 +417,77 @@ export default function MasterBondSheet({ isProduction = false }) {
     
     // Download all successful PDFs
     const successfulResults = results.filter(r => r.success);
+    const dateStr = new Date().toISOString().split('T')[0];
     
     if (successfulResults.length === 1) {
-      // Single file - download directly
+      // Single file - download directly (no ZIP needed)
       const { name, blob } = successfulResults[0];
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Completed_Package_${name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+      a.download = `Completed_Package_${name.replace(/\s+/g, '_')}_${dateStr}.pdf`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } else if (successfulResults.length > 1) {
-      // Multiple files - download each with a slight delay
-      for (let i = 0; i < successfulResults.length; i++) {
-        const { name, blob } = successfulResults[i];
-        const url = window.URL.createObjectURL(blob);
+      // 🎯 Multiple files - bundle into a single ZIP file!
+      console.log(`📦 Creating ZIP with ${successfulResults.length} files...`);
+      
+      try {
+        const zip = new JSZip();
+        
+        // Add each PDF to the ZIP
+        for (let i = 0; i < successfulResults.length; i++) {
+          const { name, blob } = successfulResults[i];
+          const fileName = `Completed_Package_${name.replace(/\s+/g, '_')}_${dateStr}.pdf`;
+          console.log(`📄 Adding to ZIP: ${fileName} (${blob.size} bytes)`);
+          zip.file(fileName, blob);
+        }
+        
+        // Generate and download the ZIP
+        console.log('🔧 Generating ZIP blob...');
+        const zipBlob = await zip.generateAsync({ 
+          type: 'blob',
+          compression: 'DEFLATE',
+          compressionOptions: { level: 6 }
+        });
+        console.log(`✅ ZIP created: ${zipBlob.size} bytes`);
+        
+        const url = window.URL.createObjectURL(zipBlob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `Completed_Package_${name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+        a.download = `Batch_Packages_${successfulResults.length}_${dateStr}.zip`;
         document.body.appendChild(a);
-        
-        // Stagger downloads slightly
-        setTimeout(() => {
-          a.click();
-          window.URL.revokeObjectURL(url);
-          document.body.removeChild(a);
-        }, i * 500);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        console.log('📥 ZIP download triggered!');
+      } catch (zipError) {
+        console.error('❌ ZIP creation failed:', zipError);
+        // Fallback: download individually if ZIP fails
+        alert('ZIP creation failed. Downloading files individually.');
+        for (let i = 0; i < successfulResults.length; i++) {
+          const { name, blob } = successfulResults[i];
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `Completed_Package_${name.replace(/\s+/g, '_')}_${dateStr}.pdf`;
+          document.body.appendChild(a);
+          setTimeout(() => {
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+          }, i * 500);
+        }
       }
     }
     
     const failedCount = results.filter(r => !r.success).length;
     setSuccessMessage(
       failedCount === 0 
-        ? `✅ All ${successfulResults.length} packages generated successfully!`
-        : `⚠️ Generated ${successfulResults.length} packages. ${failedCount} failed.`
+        ? `✅ All ${successfulResults.length} packages generated and bundled into ZIP!`
+        : `⚠️ Generated ${successfulResults.length} packages (ZIP). ${failedCount} failed.`
     );
     
     setIsGenerating(false);
