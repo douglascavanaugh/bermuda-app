@@ -1417,20 +1417,18 @@ export default function MasterBondSheet({ isProduction = false }) {
             </p>
           </div>
 
-          {/* Action Buttons Row - 🎖️ PRODUCTION: Only Clear and Send */}
+          {/* Action Buttons Row */}
           <div className="flex flex-wrap justify-center gap-2 pt-4 border-t border-gray-600">
-            {/* 🎖️ DEV ONLY: Paste Data */}
-            {!isProduction && (
-              <button
-                type="button"
-                onClick={() => setShowPasteModal(true)}
-                className="px-3 py-2 bg-purple-600 text-white rounded font-mono hover:bg-purple-500 flex items-center gap-2 text-sm"
-                title="Paste numbered data from Master Bond Sheet"
-              >
-                <Clipboard className="h-4 w-4" />
-                Paste Data
-              </button>
-            )}
+            {/* 🎖️ PRODUCTION + DEV: Paste Data */}
+            <button
+              type="button"
+              onClick={() => setShowPasteModal(true)}
+              className="px-3 py-2 bg-purple-600 text-white rounded font-mono hover:bg-purple-500 flex items-center gap-2 text-sm"
+              title="Paste numbered data from Master Bond Sheet"
+            >
+              <Clipboard className="h-4 w-4" />
+              Paste Data
+            </button>
             {/* 🎖️ DEV ONLY: OCR Scan */}
             {!isProduction && (
               <button
