@@ -572,9 +572,221 @@ There are two OF91 forms in the directory, can we call this one: OF-91.pdf, NOT 
 19. 111 Dr. Martin Luther King Jr Blvd, White Plains, NY [10601]
 20. 31,439.36
 
+---
+
+1. Brent Lipke
+2. 
+3. 3485774
+4.
+5. 1969-05-077718
+6. Ontario
+7. 07/31/1969
+8. 202208300362510
+9. 489-082-222
+10. 
+11. 
+12. 46 Sandy Shore Blvd., Cambrige, ON N3C 2V4
+13. Waterloo
+14.
+15.
+16.
+17. Common Collection Agency, INC.
+18. S
+19. 5900 Finch Ave East STE 200A, Scarborough, ON M1B 5P8
+20. 79,999.73
+
+---
+
+1. Jaime Osvaldo Garcia
+2. 
+3. 4147202762134342
+4.
+5. 156-68-114054
+6. New York
+7. 05/12/1968
+8. 202211150478952
+9. 085-56-5666
+10. J03075811
+11.
+12. PO Box 319, Temple Hills, MD [20757]
+13. Prince George's County
+14.
+15.
+16.
+17. CHASE
+18. F
+19. PO BOX 1423, Charlotte, NC [28201-1423]
+20. 6,563.69
+
+---
+
+1. Juan Manuel Ramirez Bonilla
+2. 
+3. 5424181499894645
+4.
+5. A059175457/39605894
+6. New York
+7. 03/14/1976
+8. 202201947854
+9. 089-96-6295
+10. H03502265
+11.
+12. 415 SW 9th St. Apt 2, Hallandale, FL [33009]
+13. Broward County
+14.
+15.
+16.
+17. CITI CARDS
+18. F
+19. PO BOX 658201, Dallas, TX [75265-8201]
+20. 11,775.37
+
+---
+
+1. Juan Manuel Ramirez Bonilla
+2. 
+3. 5178059796057512
+4.
+5. A059175457/39605894
+6. New York
+7. 03/14/1976
+8. 202201947854
+9. 089-96-6295
+10. H03502265
+11.
+12. 415 SW 9th St. Apt 2, Hallandale, FL [33009]
+13. Broward County
+14.
+15.
+16.
+17. CAPITAL ONE
+18. F
+19. PO BOX 60519, City of Industry, CA [91716-0519]
+20. 14,774.09
+
+---
+
+1. Juan Manuel Ramirez Bonilla
+2. 
+3. 65677066367
+4.
+5. A059175457/39605894
+6. New York
+7. 03/14/1976
+8. 202201947854
+9. 089-96-6295
+10. H03502265
+11.
+12. 415 SW 9th St. Apt 2, Hallandale, FL [33009]
+13. Broward County
+14.
+15.
+16.
+17. CITI BANK
+18. F
+19. PO BOX 790007, Saint Louis, MO [63179-0007]
+20. 25,469.39
+
+---
+
+1. Dmitry Smirnov
+2. 09/30/2025
+3. 0002026621-0200
+4.
+5. 42370864
+6. California
+7. 09/18/1972
+8. 20252052165
+9. 332-61-9094
+10. G20372478
+11.
+12. 12671 Ridgeview Dr., Hotsprings, SD [30529]
+13. Fall River County
+14.
+15.
+16.
+17. BLACK HILLS FEDERAL CREDIT UNION
+18. F
+19. PO BOX 1420, Rapid City, MO [57709-1420]
+20. 13,290.12
+
+---
+
+1. Ryan Swetits
+2. 11/21/2025
+3. 2505677126
+4.
+5. HI-628
+6. Iowa
+7. 08/22/1978
+8. 66-6053288
+9. 207-62-8729
+10. H32355134
+11. Ryan Swetits
+12. PO BOX 26, Kilauea, HI [96754-0026]
+13. Kauai County
+14.
+15.
+16.
+17. HAWAII STATE TAX COLLECTOR
+18. S
+19. PO BOX 1530, Honolulu, HI [96806-1530]
+20. 91,742.14
+
+---
+
+1. Lauren Michelle Adams
+2. 
+3. 66204/2025
+4.
+5. 139-69-132166
+6. New York
+7. 10/01/1969
+8. 202411060414232
+9. 059-60-5083
+10. J02829348
+11. 
+12. 341 Furnace Dock Rd. Unit 11, Cortlandt Manor, NY [10567]
+13. Westchester County
+14.
+15.
+16.
+17. SUPREME COURT OF THE STATE OF NEW YORK COUNTY OF WESTCHESTER
+18. S
+19. 111 Dr. Martin Luther King Jr Blvd, White Plains, NY [10601]
+20. 31,439.36
+
+---
+
+1. Brent Lipke
+2. 
+3. 3485774
+4.
+5. 1969-05-077718
+6. Ontario
+7. 07/31/1969
+8. 202208300362510
+9. 489-082-222
+10. 
+11. 
+12. 46 Sandy Shore Blvd., Cambrige, ON N3C 2V4
+13. Waterloo
+14.
+15.
+16.
+17. Common Collection Agency, INC.
+18. S
+19. 5900 Finch Ave East STE 200A, Scarborough, ON M1B 5P8
+20. 79,999.73
 
 
+Batch 8, form SF28, first field "State Of" needs to be the spelled out version of the state.
 
+Okay, first run, 7 pasted, batched all good.
+Second run, 7 pasted, batched all good.
+Third run, 8 pasted, batched all but number 4 good.
+Here's what was missing:
+SF1418, SF274, OF91
 
 
 These are what's missing...everything else is perfect:

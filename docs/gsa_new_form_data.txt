@@ -1,0 +1,664 @@
+🔄 THE FLOW:
+1. /coordinate-mapper (PDFCoordinateMapper.jsx → Creates schema JSON)
+2. Schema saved to /public/docs/pdf-templates/
+3. /batch-processor (Bermuda.jsx OR UniversalBatchProcessor.jsx → User fills/pastes data)
+4. Data → /api/generate-single-pdf/ or /api/save-batch-pdfs/
+5. API → python-pdf-api/app.py (Flask)
+6. Python overlays data → Returns filled PDF
+
+
+
+MASTER BOND SHEET:
+1. Client's Full Name: REQUIRED
+2. Date Bond Executed (Date of Arraignment):  NOT-REQUIRED 
+3. Court Case #: REQUIRED
+4. ANY past Convictions Case Number(s): NOT-REQUIRED
+5. Birth Certificate #: REQUIRED
+6. State of Birth REQUIRED
+7. Date of Birth (DOB): REQUIRED
+8. UCC Trust #: REQUIRED
+9. Social Security #: REQUIRED
+10. # on back of Social Security card: REQUIRED
+11. Third Party's Name: NOT-REQUIRED
+12. Third Party's Address: REQUIRED
+City: REQUIRED
+State: REQUIRED
+Zip: REQUIRED (to include brackets if they enter [])
+13. County: REQUIRED
+14. Prison #: NOT-REQUIRED
+15. Prison Name: NOT-REQUIRED
+16. Prison Address: NOT-REQUIRED
+17. Name of Trial Court (State or Federal): REQUIRED
+18. Radio button for S or F: REQUIRED
+19. Full Address of Court: REQUIRED
+City: REQUIRED
+State: REQUIRED
+Zip: REQUIRED
+20. Amount Owed/Due: [000,000,000.00] REQUIRED
+
+
+
+*SF24: Date Bond Executed, Principal, Surety(ies), Type of Org: INDIVIDUAL, State of Incorp, Invitation No.
+
+SF25: Date Bond Executed, Principal, Surety(ies), Type of Org: INDIVIDUAL, State of Incorp, Contract Date, Contract No.
+
+SF28: State of, County of, Name, Type and Duration: Surety/Lifetime, Name and Address of Employer: Self Employed/[Indiana], Name and Address of Individual Surety Broker Used, 
+
+*SF1418: Date Bond Executed, Principal, Surety(ies), Type of Org: INDIVIDUAL, State of Incorp, Contract Date, Contract No.
+
+SF273: Direct Writing Company, Reinsuring Company, Date Direct Writing Company Executes Agreement, State of Incorp, Date Reinsuring Company Executes Agreement
+
+SF274: Direct Writing Company, Reinsuring Company, Date Direct Writing Company Executes Agreement, State of Incorp, Date Reinsuring Company Executes Agreement, Description of Contact, Principal
+
+SF275: Direct Writing Company, Reinsuring Company, Date Direct Writing Company Executes Agreement, State of Incorp, Date Reinsuring Company Executes Agreement, Description of Bond, Date of Bond, Bond Number, Principal
+
+OF91: Name, Place of Residence, U.S. Governement Contract Number (SSN), Account Number, Name of Financial Institution, Address of Financial Institution, Whereas I (name), Claims arising therefrom, Name of Financial Institution
+
+
+
+ALL Forms: Surety(ies) or Reinsuring Company:
+
+[Name of Person...]
+Depository Trust Company
+55 Water St.
+New York, New York [10041-0099]
+
+
+Form SF28:
+
+#5A: Individual Surety Broker Used:
+Depository Trust Company
+55 Water St.
+New York, New York [10041-0099]
+
+#7:
+- [20 C01-2311-FS] - See GSA FORMS; sf 24; sf 25A; sf 28: st 273; sf 274: sf 275 and 91.
+- Birth Certificate - [Indiana - 0426103] and Social Security - [309-23-0455]; Bond Number; Non-Negotiable set off [0426103];
+- Deposited with the Unites States Treasury
+
+#8:
+- [Elkhart County Circuit Court Attn: Clerk; 20 C01-231'1-F5] - See GSA FORMS; sf 24; sf 25A; sf 28; sf 273; sf 274; sf 275 and 91.
+
+#9:
+- Bid Bond issued by [Elkhart County Circuit Court Attn: Clerk; 20 C01-2311-F5] - See GSA FORMS; sf 24; sf 25A; sf 28; sf 273; sf 274; sf 275 and 91.
+
+
+OF91:
+Claims arising therefrom:
+[Elkhart County Circuit Court Attn: Clerk; 20 C01-2311-F5] - See GSA FORMS; sf 24; sf 25A; sf 28; sf 273; sf 274; sf 275 and 91.
+
+
+Note:  Anything within the "[...]" is what we capture from the Master Bond Sheet and fill in
+
+
+
+
+
+
+1. Client Full Name:  				Jaime Osvaldo Garcia 
+2. Date Bond Executed:				
+3. Court Case #: 				4147202762134342
+4. ANY Past Convictions Case Number(s):		
+5. Birth Certificate #:				156-68-114054
+6. State of Birth:				New York
+7. Date of Birth (DOB):				05/12/1968
+8. UCC Trust #:					202211150478952
+9. Social Security #:				085-56-5666
+10. Number on back of Social Security card:	J03075811
+11. Third Party's Name:			
+12. Third Party's Address:			PO Box 319, Temple Hills, MD [20757] (Prince George's County)
+13. Prison #:					
+14. Prison Name:				
+15. Prison Address:				
+16. Name of Trial Court (State or Federal):	CHASE
+17. Full Address of Court:			PO BOX 1423, Charlotte, NC [28201-1423]
+18. Amount Owed/Due:				6,563.69
+
+
+
+
+- For ALL dates, it needs to be in this format: mm/dd/yyyy
+- I'm identifying issues below that are missing, that means that everything else is good on the form
+- However, I think I need to redo these forms all over again...can you check to see if I can edit forms?
+
+SF24:
+- Principal
+should also include: Third Party's Address:
+full name
+Third Party's Address
+
+- State of Incorporation
+should also include Birth Certificate No.:
+State - Birth Certificate #
+
+- Amount Due belongs separated into the following section/columns:
+Penal Sum of Bond
+Amount Not to Exceed
+|Million(s)|Thousand(s)|Hundred(s)|Cents|
+|----------|-----------|----------|-----|
+|          |           |          |     |
+|          |           |          |     |
+|__________|_________60|_______700|___50|[60,700.50]
+
+I have to re-create this form.  Can I edit forms, is that possible?
+
+
+
+SF25:
+- Principal
+should also include: Third Party's Address:
+full name
+Third Party's Address
+
+- State of Incorporation
+should also include Birth Certificate No.:
+State - Birth Certificate #
+
+- Amount Due belongs separated into the following section/columns:
+Penal Sum of Bond
+Amount Not to Exceed
+|Million(s)|Thousand(s)|Hundred(s)|Cents|
+|----------|-----------|----------|-----|
+|          |           |          |     |
+|          |           |          |     |
+|__________|_________60|_______700|___50|[60,700.50]
+
+I have to re-create this form.  Can I edit forms, is that possible?
+
+
+SF28:
+
+- Type And Duration Of Occupation: Needs to default to "Surety/Lifetime" - The data that you currently populate there needs to go in section 7: "The Following Is A True Representation Of The Assets I Have Pledged To The United States..."
+
+- Name And Address Of Employer (Number,
+Street, City, State, ZIP Code) (If self-
+employed, so state): Needs to default to "Self Employed/[State of Birth]" - The data that you currently populate there needs to go in section 8: "Identify All Liens, Judgements, Or Any Other Encumbrances Involving Subject Assets...."
+
+
+SF1418:
+- Principal
+should also include: Third Party's Address:
+full name
+Third Party's Address
+
+- State of Incorporation
+should also include Birth Certificate No.:
+State - Birth Certificate #
+
+- Amount Due belongs separated into the following section/columns:
+Penal Sum of Bond
+Amount Not to Exceed
+|Million(s)|Thousand(s)|Hundred(s)|Cents|
+|----------|-----------|----------|-----|
+|          |           |          |     |
+|          |           |          |     |
+|__________|_________60|_______700|___50|[60,700.50]
+
+I have to re-create this form.  Can I edit forms, is that possible?
+
+
+SF273:
+
+- Direct Writing Company
+
+You have:
+Depository Trust Company
+55 Water St.
+New York, New York [10041-0099]
+
+it needs to be:
+
+[Name of Person...]
+Third Party's Address
+
+- State of Incorporation
+should also include Birth Certificate No.:
+State - Birth Certificate #
+
+- Amount Due belongs in the following section/columns:
+4. Description of Bond
+4A. Penal Sum of Bond
+
+
+SF274:
+
+- Direct Writing Company
+
+You have:
+Depository Trust Company
+55 Water St.
+New York, New York [10041-0099]
+
+it needs to be:
+
+[Name of Person...]
+Third Party's Address
+
+- State of Incorporation
+should also include Birth Certificate No.:
+State - Birth Certificate #
+
+- 3D. Description of Contract
+Needs the following text:
+
+"Performance Bond"
+"Case No: [Court Case #]
+[Name of Trial Court (State or Federal)]
+"Attn: Clerk"
+[Full Address of Court]
+
+Anything in quotes, needs to be typed in and anything in [] comes from the input form
+
+
+- Amount Due belongs in the following section/columns:
+4. Description of Bond
+4A. Penal Sum of Bond
+4D. PRINCIPAL:
+[Name of Person...]
+Third Party's Address
+
+
+SF275:
+
+- Direct Writing Company
+
+You have:
+Depository Trust Company
+55 Water St.
+New York, New York [10041-0099]
+
+it needs to be:
+
+[Name of Person...]
+Third Party's Address
+
+- State of Incorporation
+should also include Birth Certificate No.:
+State - Birth Certificate #
+
+- 3D. Description of Bond
+Needs the following text:
+
+"Payment Bond"
+"Payment Settlement of Contract"
+[Name of Trial Court (State or Federal)]
+"Attn: Clerk"
+[Full Address of Court]
+
+Anything in quotes, needs to be typed in and anything in [] comes from the input form
+
+- Amount Due belongs in the following section/columns:
+3B. Penal Sum of Bond
+
+3E. PRINCIPAL:
+[Name of Person...]
+Third Party's Address
+
+
+OF91:
+
+- Second field from top left should be: State - Birth Certificate #, not third party address
+- Fifth field from top left should be: [Name of Trial Court (State or Federal)], not Depository Trust Company
+- Sixth field from top left should be: [Full Address of Court]
+- Ninth (last) field from top left should be: [Name of Trial Court (State or Federal)] "Attn: Clerk", not Depository Trust Company
+
+
+
+
+
+
+
+As a reminder: Anything in quotes, needs to be typed in and anything in [] comes from the input form
+
+SF28:
+
+I removed 2A: Home Address...
+
+7. Looks like we have some overlap
+
+Here are the two form fields (I deleted the third):
+
+realest1: [Court Case #] "- See GSA FORMS; sf 24; sf 25A; sf 28: st 273; sf 274: sf 275 and 91."
+realest2: "Birth Certificate -" [State - Birth Certificate #] "and Social Security -" [Social Security #]"; Bond Number; Non-Negotiable set off" [Birth Certificate #]";
+Deposited with the Unites States Treasury" FIXED
+
+8. Looks good - THIS WAS GOOD BUT NOW IT'S MISSING!!!
+
+[Name of Trial Court (State or Federal)] "Attn: Clerk;" [Court Case #] "- See GSA FORMS; sf 24; sf 25A; sf 28; sf 273; sf 274; sf 275 and
+91."
+
+9. Missing:
+
+Here is the single form field:
+
+bonds: "Bid Bond issued by" [Name of Trial Court (State or Federal)] "Attn: Clerk;" [Court Case #] - See GSA FORMS; sf 24; sf 25A; sf 28; sf
+273; sf 274; sf 275 and 91.  FIXED
+
+
+SF1418:
+
+Missing Penal Sum of Bond: (you already fixed) (Amount goes here)
+
+
+SF273:
+
+Missing Penal Sum of Bond - field name: penalsum (Amount goes here)
+
+
+SF274:
+
+Missing Penal Sum of Bond - field name: penalsum (Amount goes here)
+
+
+SF275:
+
+Removed field name: amountofreinsurance
+
+Missing Penal Sum of Bond - field name: penalsum (Amount goes here)
+
+
+Missing entire OF91 form!
+
+
+
+
+SF25: missing very top - form field: datebondexecuted and
+form field: contractdate (to the left of contractno) both are: Date Bond Executed (Date of Arraignment)
+
+
+SF28:
+
+I removed 2A: Home Address... FIXED
+
+7. Looks like we have some overlap FIXED
+
+Here are the two form fields (I deleted the third):
+
+realest1: [Court Case #] "- See GSA FORMS; sf 24; sf 25A; sf 28: st 273; sf 274: sf 275 and 91."
+realest2: "Birth Certificate -" [State - Birth Certificate #] "and Social Security -" [Social Security #]"; Bond Number; Non-Negotiable set off" [Birth Certificate #]";
+Deposited with the Unites States Treasury" FIXED
+
+8. Looks good - THIS WAS GOOD BUT NOW IT'S MISSING!!!
+
+[Name of Trial Court (State or Federal)] "Attn: Clerk;" [Court Case #] "- See GSA FORMS; sf 24; sf 25A; sf 28; sf 273; sf 274; sf 275 and
+91."
+
+9. Missing: FIXED
+
+Here is the single form field:
+
+bonds: "Bid Bond issued by" [Name of Trial Court (State or Federal)] "Attn: Clerk;" [Court Case #] - See GSA FORMS; sf 24; sf 25A; sf 28; sf
+273; sf 274; sf 275 and 91.  FIXED
+
+
+OF91: Form field from top left, 6 currently Third Party's Address, needs to be: Full Address of Court
+
+
+
+
+
+
+-SF24: Missing Date Bond Executed (Date of Arraignment) very top
+-SF25: Missing Date Bond Executed (Date of Arraignment) very top and
+Missing Contract Date
+-SF1418: Missing Date Bond Executed (Date of Arraignment) very top and
+Missing Contract Date
+-SF273: Missing agreedatedirect, agreedateexecutes, and contractdate
+-SF274: Missing dateagreed, reinsuredate, and datecontract
+-SF275: Missing dateexecuted, dateexecuted2 and dateofbond
+-OF91: blank page.
+
+There are two OF91 forms in the directory, can we call this one: OF-91.pdf, NOT this one: OF_91.pdf
+
+
+
+
+1. Jaime Osvaldo Garcia
+2. 
+3. 4147202762134342
+4.
+5. 156-68-114054
+6. New York
+7. 05/12/1968
+8. 202211150478952
+9. 085-56-5666
+10. J03075811
+11.
+12. PO Box 319, Temple Hills, MD [20757]
+13. Prince George's County
+14.
+15.
+16.
+17. CHASE
+18. F
+19. PO BOX 1423, Charlotte, NC [28201-1423]
+20. 6,563.69
+
+---
+
+1. Juan Manuel Ramirez Bonilla
+2. 
+3. 5424181499894645
+4.
+5. A059175457/39605894
+6. New York
+7. 03/14/1976
+8. 202201947854
+9. 089-96-6295
+10. H03502265
+11.
+12. 415 SW 9th St. Apt 2, Hallandale, FL [33009]
+13. Broward County
+14.
+15.
+16.
+17. CITI CARDS
+18. F
+19. PO BOX 658201, Dallas, TX [75265-8201]
+20. 11,775.37
+
+---
+
+1. Juan Manuel Ramirez Bonilla
+2. 
+3. 5178059796057512
+4.
+5. A059175457/39605894
+6. New York
+7. 03/14/1976
+8. 202201947854
+9. 089-96-6295
+10. H03502265
+11.
+12. 415 SW 9th St. Apt 2, Hallandale, FL [33009]
+13. Broward County
+14.
+15.
+16.
+17. CAPITAL ONE
+18. F
+19. PO BOX 60519, City of Industry, CA [91716-0519]
+20. 14,774.09
+
+---
+
+1. Juan Manuel Ramirez Bonilla
+2. 
+3. 65677066367
+4.
+5. A059175457/39605894
+6. New York
+7. 03/14/1976
+8. 202201947854
+9. 089-96-6295
+10. H03502265
+11.
+12. 415 SW 9th St. Apt 2, Hallandale, FL [33009]
+13. Broward County
+14.
+15.
+16.
+17. CITI BANK
+18. F
+19. PO BOX 790007, Saint Louis, MO [63179-0007]
+20. 25,469.39
+
+---
+
+1. Dmitry Smirnov
+2. 09/30/2025
+3. 0002026621-0200
+4.
+5. 42370864
+6. California
+7. 09/18/1972
+8. 20252052165
+9. 332-61-9094
+10. G20372478
+11.
+12. 12671 Ridgeview Dr., Hotsprings, SD [30529]
+13. Fall River County
+14.
+15.
+16.
+17. BLACK HILLS FEDERAL CREDIT UNION
+18. F
+19. PO BOX 1420, Rapid City, MO [57709-1420]
+20. 13,290.12
+
+---
+
+1. Ryan Swetits
+2. 11/21/2025
+3. 2505677126
+4.
+5. HI-628
+6. Iowa
+7. 08/22/1978
+8. 66-6053288
+9. 207-62-8729
+10. H32355134
+11. Ryan Swetits
+12. PO BOX 26, Kilauea, HI [96754-0026]
+13. Kauai County
+14.
+15.
+16.
+17. HAWAII STATE TAX COLLECTOR
+18. S
+19. PO BOX 1530, Honolulu, HI [96806-1530]
+20. 91,742.14
+
+---
+
+1. Lauren Michelle Adams
+2. 
+3. 66204/2025
+4.
+5. 139-69-132166
+6. New York
+7. 10/01/1969
+8. 202411060414232
+9. 059-60-5083
+10. J02829348
+11. 
+12. 341 Furnace Dock Rd. Unit 11, Cortlandt Manor, NY [10567]
+13. Westchester County
+14.
+15.
+16.
+17. SUPREME COURT OF THE STATE OF NEW YORK COUNTY OF WESTCHESTER
+18. S
+19. 111 Dr. Martin Luther King Jr Blvd, White Plains, NY [10601]
+20. 31,439.36
+
+---
+
+1. Brent Lipke
+2. 
+3. 3485774
+4.
+5. 1969-05-077718
+6. Ontario
+7. 07/31/1969
+8. 202208300362510
+9. 489-082-222
+10. 
+11. 
+12. 46 Sandy Shore Blvd., Cambrige, ON N3C 2V4
+13. Waterloo
+14.
+15.
+16.
+17. Common Collection Agency, INC.
+18. S
+19. 5900 Finch Ave East STE 200A, Scarborough, ON M1B 5P8
+20. 79,999.73
+
+
+
+Batch 8, form SF28, first field "State Of" needs to be the spelled out version of the state.
+
+Okay, first run, 7 pasted, batched all good.
+Second run, 7 pasted, batched all good.
+Third run, 8 pasted, batched all but number 4 good.
+Here's what was missing:
+SF1418, SF274, OF91
+
+
+These are what's missing...everything else is perfect:
+
+For Form SF28, first field, can you spell out the state vs the two letter designation?
+
+First one missing SF273 and SF275 (blank pages, no pdf or data)
+Second one missing SF274 (blank pages, no pdf or data)
+Third one missing SF275 and OF91 (blank pages, no pdf or data)
+Fourth one missing SF275 (blank pages, no pdf or data)
+Fifth one missing SF273 and OF91 (blank pages, no pdf or data)
+Sixth one missing OF91 (blank pages, no pdf or data)
+Seventh one perfect
+
+Question, again, if the forms SF24, SF25, SF28, SF1418, can "consistently" show up, then why can't SF273, SF274, SF275, and OF91?  Can you please FIX this making it MILITARY GRADE, no missing pages ever again?
+
+
+
+Lauren Michelle Adams
+341 Furnace Dock Rd. Unit 11,
+Cortlandt Manor, NY Westchester County
+
+this is how it should be across all forms where Principal is defined (and included in the institutionaddress on the OF91):
+
+Lauren Michelle Adams
+341 Furnace Dock Rd. Unit 11,
+Cortlandt Manor, NY [10567]
+
+
+
+
+
+bond date
+zip code
+county
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
