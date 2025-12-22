@@ -223,8 +223,11 @@ export default function PackageBatchProcessor() {
         }
 
         // 🎯 Collect blob for ZIP (don't download yet!)
+        // 🎖️ FIX: Include index AND court case # to prevent duplicates when same client has multiple entries
         const blob = await response.blob();
-        const fileName = `Completed_Package_${entry.clientFullName?.replace(/\s+/g, '_') || `Entry_${i + 1}`}.pdf`;
+        const clientName = entry.clientFullName?.replace(/\s+/g, '_') || 'Unknown';
+        const caseNum = entry.courtCaseNumber?.replace(/[\/\\:*?"<>|]/g, '_') || '';
+        const fileName = `Completed_Package_${i + 1}_${clientName}_${caseNum}.pdf`;
         successfulBlobs.push({ name: fileName, blob });
 
         newResults.push({

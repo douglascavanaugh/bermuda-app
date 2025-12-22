@@ -511,7 +511,14 @@ export default function MasterBondSheet({ isProduction = false }) {
         if (!response.ok) throw new Error(`Failed for ${entry.clientName}`);
         
         const blob = await response.blob();
-        results.push({ name: entry.clientName, blob, success: true });
+        // 🎖️ FIX: Include index and court case # to prevent duplicates
+        results.push({ 
+          name: entry.clientName, 
+          courtCase: processedData.courtCaseNumber || '',
+          entryIndex: i + 1,
+          blob, 
+          success: true 
+        });
         
         // Update entry status to complete
         setBatchEntries(prev => prev.map((e, idx) => 
@@ -556,9 +563,12 @@ export default function MasterBondSheet({ isProduction = false }) {
         const zip = new JSZip();
         
         // Add each PDF to the ZIP
+        // 🎖️ FIX: Use entry index + court case to prevent duplicate filename overwrites
         for (let i = 0; i < successfulResults.length; i++) {
-          const { name, blob } = successfulResults[i];
-          const fileName = `Completed_Package_${name.replace(/\s+/g, '_')}_${dateStr}.pdf`;
+          const { name, courtCase, entryIndex, blob } = successfulResults[i];
+          const safeName = name?.replace(/\s+/g, '_') || 'Unknown';
+          const safeCase = courtCase?.replace(/[\/\\:*?"<>|]/g, '_') || '';
+          const fileName = `Completed_Package_${entryIndex}_${safeName}_${safeCase}_${dateStr}.pdf`;
           console.log(`📄 Adding to ZIP: ${fileName} (${blob.size} bytes)`);
           zip.file(fileName, blob);
         }
