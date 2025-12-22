@@ -313,6 +313,33 @@ export default function MasterBondSheet({ isProduction = false }) {
     return headerRow + '\n' + dataRows.join('\n');
   };
 
+  // 🎖️ PRODUCTION: Validate a single entry against required fields
+  const validateEntry = (entry, entryIndex) => {
+    const errors = [];
+    
+    // Check all required fields
+    Object.keys(REQUIRED_FIELDS).forEach(field => {
+      const value = entry[field];
+      if (!value || value.toString().trim() === '') {
+        errors.push(`${REQUIRED_FIELDS[field]}`);
+      }
+    });
+
+    // SSN Format Validation - must be exactly 9 digits
+    if (entry.socialSecurityNumber) {
+      const ssnDigits = entry.socialSecurityNumber.replace(/\D/g, '');
+      if (ssnDigits.length !== 9) {
+        errors.push(`SSN must be 9 digits (currently ${ssnDigits.length})`);
+      }
+    }
+
+    return {
+      entryNumber: entryIndex + 1,
+      clientName: entry.clientFullName || `Entry ${entryIndex + 1}`,
+      errors
+    };
+  };
+
   // 🎖️ PRODUCTION: Generate CSV and email it
   const handleProductionPasteSubmit = () => {
     if (!pasteData.trim()) {
@@ -333,7 +360,21 @@ export default function MasterBondSheet({ isProduction = false }) {
       return;
     }
 
-    // Generate CSV
+    // 🎖️ PRODUCTION VALIDATION: Check all entries for required fields
+    const validationResults = parsedEntries.map((entry, index) => validateEntry(entry, index));
+    const entriesWithErrors = validationResults.filter(r => r.errors.length > 0);
+
+    if (entriesWithErrors.length > 0) {
+      // Build error message showing which entries have issues
+      const errorMessages = entriesWithErrors.map(e => 
+        `Entry #${e.entryNumber} (${e.clientName}):\n  • ${e.errors.join('\n  • ')}`
+      ).join('\n\n');
+      
+      setSuccessMessage(`❌ Validation Failed!\n\n${entriesWithErrors.length} of ${parsedEntries.length} entries have missing required fields:\n\n${errorMessages}`);
+      return;
+    }
+
+    // All entries valid - Generate CSV
     const csvContent = entriesToCSV(parsedEntries);
     
     // Create email with CSV in body
@@ -356,7 +397,7 @@ export default function MasterBondSheet({ isProduction = false }) {
     
     setShowPasteModal(false);
     setPasteData('');
-    setSuccessMessage(`✅ Email opened with ${parsedEntries.length} entries as CSV!`);
+    setSuccessMessage(`✅ Email opened with ${parsedEntries.length} validated entries as CSV!`);
   };
 
   // Handle paste data submission - supports single OR multiple entries separated by ---
