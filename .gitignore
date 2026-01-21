@@ -130,3 +130,6 @@ dist
 .pnp.*
 venv/
 .vercel
+
+# Ignore completed form PDFs (archived by date)
+public/completed_forms/*/
