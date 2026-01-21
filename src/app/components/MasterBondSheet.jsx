@@ -221,8 +221,8 @@ export default function MasterBondSheet({ isProduction = false }) {
             // Also handles: "341 Furnace Dock Rd. Unit 11, Cortlandt Manor, NY [10567]"
             // Also handles: ZIP with or without brackets, with or without extension
             // 🇨🇦 CANADA FIX: Now handles Canadian postal codes like "N3C 2V4" or "M1B 5P8"
-            // Regex: [\dA-Za-z]+ matches alphanumeric, [\s-]? optional space/dash, [\dA-Za-z]* rest
-            const addressMatch = value.match(/^([^,]+),\s*([^,]+),\s*([A-Za-z]{2})\s*(\[?[\dA-Za-z]+[\s-]?[\dA-Za-z-]*\]?)/i);
+            // 🔧 FIX: [,\s]* allows optional comma between state and ZIP (e.g., "FL, 33009")
+            const addressMatch = value.match(/^([^,]+),\s*([^,]+),\s*([A-Za-z]{2})[,\s]*(\[?[\dA-Za-z]+[\s-]?[\dA-Za-z-]*\]?)/i);
             if (addressMatch) {
               parsedData.thirdPartyAddress = addressMatch[1].trim();
               parsedData.thirdPartyCity = addressMatch[2].trim();
@@ -246,7 +246,8 @@ export default function MasterBondSheet({ isProduction = false }) {
           } else if (fieldName === 'courtAddress' && value) {
             // Parse: "PO BOX 1423, Charlotte, NC [28201-1423]"
             // 🇨🇦 CANADA FIX: Now handles Canadian postal codes like "M1B 5P8"
-            const courtMatch = value.match(/^([^,]+),\s*([^,]+),\s*([A-Za-z]{2})\s*(\[?[\dA-Za-z]+[\s-]?[\dA-Za-z-]*\]?)?/i);
+            // 🔧 FIX: [,\s]* allows optional comma between state and ZIP (e.g., "TX, 75285-1001")
+            const courtMatch = value.match(/^([^,]+),\s*([^,]+),\s*([A-Za-z]{2})[,\s]*(\[?[\dA-Za-z]+[\s-]?[\dA-Za-z-]*\]?)?/i);
             if (courtMatch) {
               parsedData.courtAddress = courtMatch[1].trim();
               parsedData.courtCity = courtMatch[2].trim();
