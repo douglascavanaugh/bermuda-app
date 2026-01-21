@@ -1606,9 +1606,10 @@ def parse_amount_to_columns(amount_str):
         clean_amount = str(amount_str).replace('$', '').replace(',', '').strip()
         amount = float(clean_amount)
         
-        # Split into parts
-        cents = int((amount % 1) * 100)
-        whole = int(amount)
+        # Split into parts - use round() to fix floating-point precision issues!
+        # e.g., 15791.64 % 1 can give 0.6399999... which int() would make 63
+        cents = int(round((amount % 1) * 100))
+        whole = int(round(amount))
         
         hundreds = whole % 1000
         thousands = (whole // 1000) % 1000

@@ -702,19 +702,36 @@ export default function MasterBondSheet({ isProduction = false }) {
   };
 
   // Format SSN/SIN as user types
-  // 🇺🇸 US SSN: XXX-XX-XXXX (9 digits)
-  // 🇨🇦 Canadian SIN: XXX-XXX-XXX (9 digits)
+  // 🇺🇸 US SSN: XXX-XX-XXXX (9 digits, format: 3-2-4)
+  // 🇨🇦 Canadian SIN: XXX-XXX-XXX (9 digits, format: 3-3-3)
   const handleSSNChange = (e) => {
     const rawInput = e.target.value;
     let digits = rawInput.replace(/\D/g, '');
     if (digits.length > 9) digits = digits.slice(0, 9);
     
-    // Auto-detect format based on existing dashes in input
-    // If user typed Canadian style (XXX-XXX-), use Canadian format
-    const hasCanadianPattern = /^\d{3}-\d{3}/.test(rawInput);
+    // 🔍 Smarter format detection:
+    // Check if user is typing US format (XXX-XX-) - the 2-digit middle group is the key indicator
+    // Once we see XXX-XX pattern (where XX is exactly 2 digits before a dash or at 5 chars), lock to US
+    const hasUSPattern = /^\d{3}-\d{2}[^0-9]/.test(rawInput) || // Has XXX-XX- pattern
+                         (rawInput.length >= 6 && /^\d{3}-\d{2}$/.test(rawInput)); // Exactly at XXX-XX
+    
+    // Canadian pattern: XXX-XXX (3 digits after first dash before any further formatting)
+    // Only trigger Canadian if we see exactly 3 digits after first dash
+    const hasCanadianPattern = /^\d{3}-\d{3}[^0-9]/.test(rawInput) || // Has XXX-XXX- pattern
+                               (rawInput.length >= 7 && /^\d{3}-\d{3}$/.test(rawInput)); // Exactly at XXX-XXX
     
     let formatted;
-    if (hasCanadianPattern && digits.length > 3) {
+    // Priority: US pattern wins if detected (since it's more restrictive with the 2-digit middle)
+    if (hasUSPattern || (!hasCanadianPattern && digits.length <= 5)) {
+      // 🇺🇸 US SSN format: XXX-XX-XXXX (default)
+      if (digits.length > 5) {
+        formatted = `${digits.slice(0, 3)}-${digits.slice(3, 5)}-${digits.slice(5)}`;
+      } else if (digits.length > 3) {
+        formatted = `${digits.slice(0, 3)}-${digits.slice(3)}`;
+      } else {
+        formatted = digits;
+      }
+    } else if (hasCanadianPattern) {
       // 🇨🇦 Canadian SIN format: XXX-XXX-XXX
       if (digits.length > 6) {
         formatted = `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
@@ -724,7 +741,7 @@ export default function MasterBondSheet({ isProduction = false }) {
         formatted = digits;
       }
     } else {
-      // 🇺🇸 US SSN format: XXX-XX-XXXX (default)
+      // Default to US format
       if (digits.length > 5) {
         formatted = `${digits.slice(0, 3)}-${digits.slice(3, 5)}-${digits.slice(5)}`;
       } else if (digits.length > 3) {
