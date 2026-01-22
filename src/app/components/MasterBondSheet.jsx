@@ -130,7 +130,7 @@ export default function MasterBondSheet({ isProduction = false }) {
   // 🎖️ PRODUCTION MODE: Required fields validation
   const REQUIRED_FIELDS = {
     clientFullName: 'Client Full Name is required',
-    courtCaseNumber: 'Court Case # is required',
+    courtCaseNumber: 'Court Case/Creditor Account # is required',
     birthCertificateNumber: 'Birth Certificate # is required',
     stateOfBirth: 'State of Birth is required',
     dateOfBirth: 'Date of Birth is required',
@@ -142,9 +142,9 @@ export default function MasterBondSheet({ isProduction = false }) {
     thirdPartyState: 'Third Party State is required',
     thirdPartyZip: 'Third Party ZIP/Postal Code is required',
     thirdPartyCounty: 'County/Region is required',
-    trialCourtName: 'Trial Court Name is required',
+    trialCourtName: 'Name of Trial Court/Creditor is required',
     trialCourtType: 'Court Type (State/Federal) is required',
-    courtAddress: 'Court Address is required',
+    courtAddress: 'Court/Creditor Address is required',
     courtCity: 'Court City is required',
     courtState: 'Court State is required',
     courtZip: 'Court ZIP/Postal Code is required',
@@ -852,17 +852,55 @@ export default function MasterBondSheet({ isProduction = false }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    // Basic validation (Date Bond Executed is optional - defaults to "Open")
     const newErrors = {};
-    if (!formData.clientFullName.trim()) newErrors.clientFullName = 'Required';
-    // dateBondExecuted is NOT required - will default to "Open" if empty
-    if (!formData.courtCaseNumber.trim()) newErrors.courtCaseNumber = 'Required';
-    if (!formData.stateOfBirth) newErrors.stateOfBirth = 'Required';
     
-    // 🎖️ SSN Format Validation - must be exactly 9 digits
-    const ssnDigits = formData.socialSecurityNumber.replace(/\D/g, '');
-    if (ssnDigits.length !== 9) {
-      newErrors.socialSecurityNumber = `SSN must be 9 digits (currently ${ssnDigits.length})`;
+    // 🎖️ PRODUCTION MODE: Full validation for all required fields
+    if (isProduction) {
+      // Client Information
+      if (!formData.clientFullName.trim()) newErrors.clientFullName = 'Required';
+      if (!formData.courtCaseNumber.trim()) newErrors.courtCaseNumber = 'Required';
+      
+      // Birth & Identity
+      if (!formData.birthCertificateNumber.trim()) newErrors.birthCertificateNumber = 'Required';
+      if (!formData.stateOfBirth) newErrors.stateOfBirth = 'Required';
+      if (!formData.dateOfBirth) newErrors.dateOfBirth = 'Required';
+      if (!formData.uccTrustNumber.trim()) newErrors.uccTrustNumber = 'Required';
+      
+      // SSN - must be exactly 9 digits
+      const ssnDigits = formData.socialSecurityNumber.replace(/\D/g, '');
+      if (ssnDigits.length !== 9) {
+        newErrors.socialSecurityNumber = `SSN must be 9 digits (currently ${ssnDigits.length})`;
+      }
+      if (!formData.ssnBackNumber.trim()) newErrors.ssnBackNumber = 'Required';
+      
+      // Third Party Information
+      if (!formData.thirdPartyName.trim()) newErrors.thirdPartyName = 'Required';
+      if (!formData.thirdPartyAddress.trim()) newErrors.thirdPartyAddress = 'Required';
+      if (!formData.thirdPartyCity.trim()) newErrors.thirdPartyCity = 'Required';
+      if (!formData.thirdPartyState) newErrors.thirdPartyState = 'Required';
+      if (!formData.thirdPartyZip.trim()) newErrors.thirdPartyZip = 'Required';
+      if (!formData.thirdPartyCounty.trim()) newErrors.thirdPartyCounty = 'Required';
+      
+      // Court/Creditor Information
+      if (!formData.trialCourtName.trim()) newErrors.trialCourtName = 'Required';
+      if (!formData.courtAddress.trim()) newErrors.courtAddress = 'Required';
+      if (!formData.courtCity.trim()) newErrors.courtCity = 'Required';
+      if (!formData.courtState) newErrors.courtState = 'Required';
+      if (!formData.courtZip.trim()) newErrors.courtZip = 'Required';
+      
+      // Amount
+      if (!formData.amountOwed.trim()) newErrors.amountOwed = 'Required';
+    } else {
+      // 🔧 DEVELOPMENT MODE: Basic validation only
+      if (!formData.clientFullName.trim()) newErrors.clientFullName = 'Required';
+      if (!formData.courtCaseNumber.trim()) newErrors.courtCaseNumber = 'Required';
+      if (!formData.stateOfBirth) newErrors.stateOfBirth = 'Required';
+      
+      // SSN Format Validation
+      const ssnDigits = formData.socialSecurityNumber.replace(/\D/g, '');
+      if (ssnDigits.length !== 9) {
+        newErrors.socialSecurityNumber = `SSN must be 9 digits (currently ${ssnDigits.length})`;
+      }
     }
     
     if (Object.keys(newErrors).length > 0) {
@@ -1328,7 +1366,7 @@ export default function MasterBondSheet({ isProduction = false }) {
                 )}
               </div>
               <div className="relative">
-                <label className="block text-gray-300 text-sm mb-1">Court Case # *</label>
+                <label className="block text-gray-300 text-sm mb-1">Court Case/Creditor Account # *</label>
                 <input
                   type="text"
                   name="courtCaseNumber"
@@ -1362,7 +1400,7 @@ export default function MasterBondSheet({ isProduction = false }) {
             
             <div className="grid grid-cols-3 gap-4">
               <div className="relative">
-                <label className="block text-gray-300 text-sm mb-1">Birth Certificate #</label>
+                <label className="block text-gray-300 text-sm mb-1">Birth Certificate # *</label>
                 <input
                   type="text"
                   name="birthCertificateNumber"
@@ -1390,7 +1428,7 @@ export default function MasterBondSheet({ isProduction = false }) {
                 )}
               </div>
               <div className="relative">
-                <label className="block text-gray-300 text-sm mb-1">Date of Birth</label>
+                <label className="block text-gray-300 text-sm mb-1">Date of Birth *</label>
                 <input
                   type="date"
                   name="dateOfBirth"
@@ -1403,7 +1441,7 @@ export default function MasterBondSheet({ isProduction = false }) {
 
             <div className="grid grid-cols-3 gap-4">
               <div className="relative">
-                <label className="block text-gray-300 text-sm mb-1">UCC Trust #</label>
+                <label className="block text-gray-300 text-sm mb-1">UCC Trust # *</label>
                 <input
                   type="text"
                   name="uccTrustNumber"
@@ -1426,7 +1464,7 @@ export default function MasterBondSheet({ isProduction = false }) {
                 />
               </div>
               <div className="relative">
-                <label className="block text-gray-300 text-sm mb-1"># on Back of SS Card <span className="text-gray-500 text-xs">(🇺🇸 only)</span></label>
+                <label className="block text-gray-300 text-sm mb-1"># on Back of SS Card * <span className="text-gray-500 text-xs">(🇺🇸 only)</span></label>
                 <input
                   type="text"
                   name="ssnBackNumber"
@@ -1444,7 +1482,7 @@ export default function MasterBondSheet({ isProduction = false }) {
             <h3 className="text-lg font-bold text-white text-center">3. THIRD PARTY INFORMATION</h3>
             
             <div className="relative">
-              <label className="block text-gray-300 text-sm mb-1">Third Party&apos;s Name</label>
+              <label className="block text-gray-300 text-sm mb-1">Third Party&apos;s Name *</label>
               <input
                 type="text"
                 name="thirdPartyName"
@@ -1456,7 +1494,7 @@ export default function MasterBondSheet({ isProduction = false }) {
             </div>
 
             <div className="relative">
-              <label className="block text-gray-300 text-sm mb-1">Third Party&apos;s Address</label>
+              <label className="block text-gray-300 text-sm mb-1">Third Party&apos;s Address *</label>
               <input
                 type="text"
                 name="thirdPartyAddress"
@@ -1469,7 +1507,7 @@ export default function MasterBondSheet({ isProduction = false }) {
 
             <div className="grid grid-cols-4 gap-4">
               <div className="relative">
-                <label className="block text-gray-300 text-sm mb-1">City</label>
+                <label className="block text-gray-300 text-sm mb-1">City *</label>
                 <input
                   type="text"
                   name="thirdPartyCity"
@@ -1480,7 +1518,7 @@ export default function MasterBondSheet({ isProduction = false }) {
                 />
               </div>
               <div className="relative">
-                <label className="block text-gray-300 text-sm mb-1">State</label>
+                <label className="block text-gray-300 text-sm mb-1">State *</label>
                 <select
                   name="thirdPartyState"
                   value={formData.thirdPartyState}
@@ -1494,7 +1532,7 @@ export default function MasterBondSheet({ isProduction = false }) {
                 </select>
               </div>
               <div className="relative">
-                <label className="block text-gray-300 text-sm mb-1">ZIP/Postal Code</label>
+                <label className="block text-gray-300 text-sm mb-1">ZIP/Postal Code *</label>
                 <input
                   type="text"
                   name="thirdPartyZip"
@@ -1505,7 +1543,7 @@ export default function MasterBondSheet({ isProduction = false }) {
                 />
               </div>
               <div className="relative">
-                <label className="block text-gray-300 text-sm mb-1">County/Region</label>
+                <label className="block text-gray-300 text-sm mb-1">County/Region *</label>
                 <input
                   type="text"
                   name="thirdPartyCounty"
@@ -1565,7 +1603,7 @@ export default function MasterBondSheet({ isProduction = false }) {
             
             <div className="grid grid-cols-2 gap-4">
               <div className="relative">
-                <label className="block text-gray-300 text-sm mb-1">Name of Trial Court</label>
+                <label className="block text-gray-300 text-sm mb-1">Name of Trial Court/Creditor *</label>
                 <input
                   type="text"
                   name="trialCourtName"
@@ -1605,7 +1643,7 @@ export default function MasterBondSheet({ isProduction = false }) {
             </div>
 
             <div className="relative">
-              <label className="block text-gray-300 text-sm mb-1">Court Address</label>
+              <label className="block text-gray-300 text-sm mb-1">Court/Creditor Address *</label>
               <input
                 type="text"
                 name="courtAddress"
@@ -1618,7 +1656,7 @@ export default function MasterBondSheet({ isProduction = false }) {
 
             <div className="grid grid-cols-3 gap-4">
               <div className="relative">
-                <label className="block text-gray-300 text-sm mb-1">City {isProduction && <span className="text-red-400">*</span>}</label>
+                <label className="block text-gray-300 text-sm mb-1">City *</label>
                 <input
                   type="text"
                   name="courtCity"
@@ -1630,7 +1668,7 @@ export default function MasterBondSheet({ isProduction = false }) {
                 {errors.courtCity && <p className="text-red-400 text-xs mt-1">{errors.courtCity}</p>}
               </div>
               <div className="relative">
-                <label className="block text-gray-300 text-sm mb-1">State {isProduction && <span className="text-red-400">*</span>}</label>
+                <label className="block text-gray-300 text-sm mb-1">State *</label>
                 <select
                   name="courtState"
                   value={formData.courtState}
@@ -1645,7 +1683,7 @@ export default function MasterBondSheet({ isProduction = false }) {
                 {errors.courtState && <p className="text-red-400 text-xs mt-1">{errors.courtState}</p>}
               </div>
               <div className="relative">
-                <label className="block text-gray-300 text-sm mb-1">ZIP/Postal Code {isProduction && <span className="text-red-400">*</span>}</label>
+                <label className="block text-gray-300 text-sm mb-1">ZIP/Postal Code *</label>
                 <input
                   type="text"
                   name="courtZip"
@@ -1664,7 +1702,7 @@ export default function MasterBondSheet({ isProduction = false }) {
             <h3 className="text-lg font-bold text-white text-center">6. FINANCIAL INFORMATION</h3>
             
             <div className="relative w-1/2">
-              <label className="block text-gray-300 text-sm mb-1">Amount Owed/Due</label>
+              <label className="block text-gray-300 text-sm mb-1">Amount Owed/Due *</label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 font-mono">$</span>
                 <input
