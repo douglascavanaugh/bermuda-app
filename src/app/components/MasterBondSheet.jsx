@@ -122,6 +122,10 @@ export default function MasterBondSheet({ isProduction = false }) {
   // 🎖️ PRODUCTION: Validation error modal state
   const [showValidationErrorModal, setShowValidationErrorModal] = useState(false);
   const [validationErrors, setValidationErrors] = useState([]);
+  
+  // 🎖️ PRODUCTION: Success modal state
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [submittedClientName, setSubmittedClientName] = useState('');
 
   // 🎖️ PRODUCTION MODE: Required fields validation
   const REQUIRED_FIELDS = {
@@ -869,7 +873,7 @@ export default function MasterBondSheet({ isProduction = false }) {
     setShowConfirmDialog(true);
   };
 
-  // Generate the complete package
+  // Generate the complete package (development) or submit to DB (production)
   const handleConfirmSubmit = async () => {
     setShowConfirmDialog(false);
     setIsGenerating(true);
@@ -884,6 +888,32 @@ export default function MasterBondSheet({ isProduction = false }) {
         processedFormData.dateBondExecuted = 'Open';
       }
       
+      // 🚀 PRODUCTION MODE: Submit to database instead of generating PDF
+      if (isProduction) {
+        console.log('📤 Submitting to database:', processedFormData);
+        
+        const response = await fetch('/api/submit-bond', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(processedFormData)
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(result.error || 'Failed to submit');
+        }
+        
+        console.log('✅ Submission saved:', result);
+        
+        // Show success modal and reset form
+        setSubmittedClientName(result.clientName);
+        setShowSuccessModal(true);
+        setFormData(initialFormData);
+        return;
+      }
+      
+      // 🔧 DEVELOPMENT MODE: Generate PDFs locally
       // Build the template data with all mappings
       const packageData = buildPackageData(processedFormData);
       
@@ -919,7 +949,7 @@ export default function MasterBondSheet({ isProduction = false }) {
       setTimeout(() => setSuccessMessage(''), 5000);
 
     } catch (error) {
-      console.error('Package generation error:', error);
+      console.error('Submission/generation error:', error);
       setSuccessMessage(`Error: ${error.message}`);
     } finally {
       setIsGenerating(false);
@@ -1081,13 +1111,19 @@ export default function MasterBondSheet({ isProduction = false }) {
   const ConfirmationDialog = () => (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-gray-700 rounded-lg p-6 max-w-md w-full mx-4">
-        <h3 className="text-white font-mono-bold mb-4">Confirm Package Generation</h3>
+        <h3 className="text-white font-mono-bold mb-4">
+          {isProduction ? '📤 Confirm Submission' : 'Confirm Package Generation'}
+        </h3>
         <p className="text-gray-200 mb-4">
-          You are about to generate a Completed Package with all 8 GSA forms for:
+          {isProduction 
+            ? 'You are about to submit bond data for processing:'
+            : 'You are about to generate a Completed Package with all 8 GSA forms for:'}
         </p>
         <p className="text-white font-bold mb-4">{formData.clientFullName}</p>
         <p className="text-gray-300 text-sm mb-4">
-          Forms: SF24, SF25, SF28, SF1418, SF273, SF274, SF275, OF91
+          {isProduction
+            ? 'Your submission will be queued and processed shortly.'
+            : 'Forms: SF24, SF25, SF28, SF1418, SF273, SF274, SF275, OF91'}
         </p>
         <div className="flex justify-end space-x-2">
           <button
@@ -1098,11 +1134,48 @@ export default function MasterBondSheet({ isProduction = false }) {
           </button>
           <button
             onClick={handleConfirmSubmit}
-            className="px-4 py-2 bg-black text-white rounded font-mono hover:bg-green-600"
+            className={`px-4 py-2 ${isProduction ? 'bg-blue-600 hover:bg-blue-500' : 'bg-black hover:bg-green-600'} text-white rounded font-mono`}
           >
-            Generate Package
+            {isProduction ? '📤 Submit' : 'Generate Package'}
           </button>
         </div>
+      </div>
+    </div>
+  );
+
+  // 🎖️ PRODUCTION: Success Modal
+  const SuccessModal = () => (
+    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[100]">
+      <div className="bg-green-900 border-4 border-green-500 rounded-lg p-8 max-w-md w-full mx-4 shadow-2xl text-center">
+        {/* Success Icon */}
+        <div className="flex justify-center mb-4">
+          <div className="bg-green-500 rounded-full p-4">
+            <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+        </div>
+        
+        {/* Title */}
+        <h3 className="text-2xl font-bold text-white mb-2">✅ Submission Received!</h3>
+        
+        {/* Client Name */}
+        <p className="text-green-300 text-lg mb-4">
+          Bond data for <span className="font-bold text-white">{submittedClientName}</span> has been submitted successfully.
+        </p>
+        
+        {/* Info */}
+        <p className="text-green-200 text-sm mb-6">
+          Your submission is now queued for processing. The forms will be generated shortly.
+        </p>
+        
+        {/* Close Button */}
+        <button
+          onClick={() => setShowSuccessModal(false)}
+          className="px-8 py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-500 text-lg"
+        >
+          Got It! ✓
+        </button>
       </div>
     </div>
   );
@@ -1623,15 +1696,18 @@ export default function MasterBondSheet({ isProduction = false }) {
           {/* Action Buttons Row */}
           <div className="flex flex-wrap justify-center gap-2 pt-4 border-t border-gray-600">
             {/* 🎖️ PRODUCTION + DEV: Paste Data */}
-            <button
-              type="button"
-              onClick={() => setShowPasteModal(true)}
-              className="px-3 py-2 bg-purple-600 text-white rounded font-mono hover:bg-purple-500 flex items-center gap-2 text-sm"
-              title={isProduction ? "Paste data and generate CSV for email" : "Paste numbered data from Master Bond Sheet"}
-            >
-              <Clipboard className="h-4 w-4" />
-              {isProduction ? 'Paste & Email CSV' : 'Paste Data'}
-            </button>
+            {/* 🎖️ DEV ONLY: Paste Data */}
+            {!isProduction && (
+              <button
+                type="button"
+                onClick={() => setShowPasteModal(true)}
+                className="px-3 py-2 bg-purple-600 text-white rounded font-mono hover:bg-purple-500 flex items-center gap-2 text-sm"
+                title="Paste numbered data from Master Bond Sheet"
+              >
+                <Clipboard className="h-4 w-4" />
+                Paste Data
+              </button>
+            )}
             {/* 🎖️ DEV ONLY: OCR Scan */}
             {!isProduction && (
               <button
@@ -1656,16 +1732,18 @@ export default function MasterBondSheet({ isProduction = false }) {
                 Export CSV
               </button>
             )}
-            {/* 🎖️ PRODUCTION + DEV: Send Form */}
-            <button
-              type="button"
-              onClick={handleSendEmail}
-              className="px-3 py-2 bg-green-600 text-white rounded font-mono hover:bg-green-500 flex items-center gap-2 text-sm"
-              title="Send form data via email"
-            >
-              <Mail className="h-4 w-4" />
-              Send Form
-            </button>
+            {/* 🎖️ DEV ONLY: Send Form via Email */}
+            {!isProduction && (
+              <button
+                type="button"
+                onClick={handleSendEmail}
+                className="px-3 py-2 bg-green-600 text-white rounded font-mono hover:bg-green-500 flex items-center gap-2 text-sm"
+                title="Send form data via email"
+              >
+                <Mail className="h-4 w-4" />
+                Send Form
+              </button>
+            )}
             {/* 🎖️ DEV ONLY: Batch Process */}
             {!isProduction && (
               <Link
@@ -1707,6 +1785,26 @@ export default function MasterBondSheet({ isProduction = false }) {
                 )}
               </button>
             )}
+            {/* 🎖️ PRODUCTION ONLY: Submit to Database */}
+            {isProduction && (
+              <button
+                type="submit"
+                disabled={isGenerating}
+                className="px-6 py-2 bg-blue-600 text-white rounded font-mono hover:bg-blue-500 disabled:opacity-50 flex items-center gap-2"
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Submitting...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4" />
+                    Submit Bond Data
+                  </>
+                )}
+              </button>
+            )}
           </div>
 
         </form>
@@ -1715,6 +1813,9 @@ export default function MasterBondSheet({ isProduction = false }) {
         
         {/* 🎖️ PRODUCTION: Validation Error Modal (front and center!) */}
         {showValidationErrorModal && <ValidationErrorModal />}
+        
+        {/* 🎖️ PRODUCTION: Success Modal */}
+        {showSuccessModal && <SuccessModal />}
         
         {showBatchPreview && <BatchPreviewDialog />}
         
