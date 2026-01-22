@@ -944,10 +944,11 @@ export default function MasterBondSheet({ isProduction = false }) {
         
         console.log('✅ Submission saved:', result);
         
-        // Show success modal and reset form
+        // Show success modal and reset form + clear errors
         setSubmittedClientName(result.clientName);
         setShowSuccessModal(true);
         setFormData(initialFormData);
+        setErrors(initialErrors);  // Clear the red error states!
         return;
       }
       
