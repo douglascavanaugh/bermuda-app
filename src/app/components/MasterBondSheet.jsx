@@ -871,7 +871,7 @@ export default function MasterBondSheet({ isProduction = false }) {
       if (ssnDigits.length !== 9) {
         newErrors.socialSecurityNumber = `SSN must be 9 digits (currently ${ssnDigits.length})`;
       }
-      if (!formData.ssnBackNumber.trim()) newErrors.ssnBackNumber = 'Required';
+      // Note: ssnBackNumber is NOT required (Canada doesn't have this)
       
       // Third Party Information
       if (!formData.thirdPartyName.trim()) newErrors.thirdPartyName = 'Required';
@@ -1464,7 +1464,7 @@ export default function MasterBondSheet({ isProduction = false }) {
                 />
               </div>
               <div className="relative">
-                <label className="block text-gray-300 text-sm mb-1"># on Back of SS Card * <span className="text-gray-500 text-xs">(🇺🇸 only)</span></label>
+                <label className="block text-gray-300 text-sm mb-1"># on Back of SS Card <span className="text-gray-500 text-xs">(🇺🇸 only)</span></label>
                 <input
                   type="text"
                   name="ssnBackNumber"
