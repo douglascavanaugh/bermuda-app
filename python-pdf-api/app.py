@@ -2072,12 +2072,24 @@ def process_single_submission(submission):
     submission_id = submission.get('id')
     client_name = submission.get('client_full_name', 'Unknown')
     
+    # 🔒 DUPLICATE PREVENTION: Check if still pending before processing
+    supabase = get_supabase_client()
+    if supabase:
+        try:
+            result = supabase.table('bond_submissions').select('status').eq('id', submission_id).single().execute()
+            current_status = result.data.get('status') if result.data else None
+            if current_status != 'pending':
+                logger.info(f"⏭️ Skipping {client_name} - already {current_status}")
+                return True  # Not an error, just already processed
+        except Exception as e:
+            logger.warning(f"⚠️ Could not verify status for {submission_id}: {e}")
+    
     logger.info(f"{'='*60}")
     logger.info(f"🚀 AUTO-PROCESSING: {client_name} (ID: {submission_id})")
     logger.info(f"{'='*60}")
     
     try:
-        # Mark as processing
+        # Mark as processing IMMEDIATELY to prevent duplicates
         update_submission_status(submission_id, 'processing')
         
         # Build package data from submission
