@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Loader2, Upload, Download, Mail, Clipboard, Package, Camera, Image as ImageIcon } from 'lucide-react';
 import JSZip from 'jszip';
@@ -126,6 +126,73 @@ export default function MasterBondSheet({ isProduction = false }) {
   // 🎖️ PRODUCTION: Success modal state
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [submittedClientName, setSubmittedClientName] = useState('');
+  
+  // 🔄 CLIENT LOOKUP: For quick re-population from DB
+  const [previousClients, setPreviousClients] = useState([]);
+  const [loadingClients, setLoadingClients] = useState(false);
+  
+  // Fetch previous clients on mount (dev mode only)
+  useEffect(() => {
+    if (!isProduction) {
+      fetchPreviousClients();
+    }
+  }, [isProduction]);
+  
+  const fetchPreviousClients = async () => {
+    setLoadingClients(true);
+    try {
+      const response = await fetch('/api/get-clients');
+      const data = await response.json();
+      if (data.success) {
+        setPreviousClients(data.clients);
+      }
+    } catch (error) {
+      console.error('Failed to fetch previous clients:', error);
+    }
+    setLoadingClients(false);
+  };
+  
+  // Handle client selection from dropdown
+  const handleClientSelect = (e) => {
+    const clientName = e.target.value;
+    if (!clientName) return;
+    
+    const client = previousClients.find(c => c.client_full_name === clientName);
+    if (!client) return;
+    
+    // Map snake_case DB fields to camelCase form fields
+    setFormData({
+      clientFullName: client.client_full_name || '',
+      dateBondExecuted: client.date_bond_executed || '',
+      courtCaseNumber: client.court_case_number || '',
+      pastConvictionsCaseNumbers: client.past_convictions_case_numbers || '',
+      birthCertificateNumber: client.birth_certificate_number || '',
+      stateOfBirth: client.state_of_birth || '',
+      dateOfBirth: client.date_of_birth || '',
+      uccTrustNumber: client.ucc_trust_number || '',
+      socialSecurityNumber: client.social_security_number || '',
+      ssnBackNumber: client.ssn_back_number || '',
+      thirdPartyName: client.third_party_name || '',
+      thirdPartyAddress: client.third_party_address || '',
+      thirdPartyCity: client.third_party_city || '',
+      thirdPartyState: client.third_party_state || '',
+      thirdPartyZip: client.third_party_zip || '',
+      thirdPartyCounty: client.third_party_county || '',
+      prisonNumber: client.prison_number || '',
+      prisonName: client.prison_name || '',
+      prisonAddress: client.prison_address || '',
+      trialCourtName: client.trial_court_name || '',
+      trialCourtType: client.trial_court_type || 'State',
+      courtAddress: client.court_address || '',
+      courtCity: client.court_city || '',
+      courtState: client.court_state || '',
+      courtZip: client.court_zip || '',
+      amountOwed: client.amount_owed || ''
+    });
+    
+    // Clear any previous errors
+    setErrors(initialErrors);
+  };
 
   // 🎖️ PRODUCTION MODE: Required fields validation
   const REQUIRED_FIELDS = {
@@ -1318,6 +1385,40 @@ export default function MasterBondSheet({ isProduction = false }) {
         <h2 className="text-xl font-mono-bold text-center text-white mb-6">
           MASTER BOND SHEET
         </h2>
+        
+        {/* 🔄 CLIENT LOOKUP DROPDOWN - Dev mode only */}
+        {!isProduction && previousClients.length > 0 && (
+          <div className="mb-6 p-4 bg-gray-800 rounded-lg border border-gray-600">
+            <label className="block text-sm text-gray-300 mb-2">
+              📂 Load Previous Client (auto-fills all fields)
+            </label>
+            <div className="flex gap-2">
+              <select
+                onChange={handleClientSelect}
+                defaultValue=""
+                className="flex-1 p-2 bg-gray-700 text-white rounded border border-gray-500 focus:border-blue-500 focus:outline-none"
+              >
+                <option value="">-- Select a previous client --</option>
+                {previousClients.map((client) => (
+                  <option key={client.id} value={client.client_full_name}>
+                    {client.client_full_name}
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={fetchPreviousClients}
+                disabled={loadingClients}
+                className="px-3 py-2 bg-gray-600 text-white rounded hover:bg-gray-500 disabled:opacity-50"
+                title="Refresh client list"
+              >
+                {loadingClients ? '...' : '🔄'}
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              {previousClients.length} client{previousClients.length !== 1 ? 's' : ''} available • Only updates the Amount field needed? Just change it after loading!
+            </p>
+          </div>
+        )}
         <p className="text-gray-400 text-center text-sm mb-6">
           Complete Package Generator • SF24 • SF25 • SF28 • SF1418 • SF273 • SF274 • SF275 • OF91
         </p>
