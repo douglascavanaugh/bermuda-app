@@ -150,7 +150,7 @@ export async function POST(request) {
     console.log('✅ Bond submission saved:', result.id);
     
     // Send notifications (non-blocking)
-    sendPushNotification(data.clientFullName);
+    // sendPushNotification(data.clientFullName); // Disabled - auto-polling handles processing now
     sendNotificationEmail(data.clientFullName, result.created_at);
     
     return NextResponse.json({
