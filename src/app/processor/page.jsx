@@ -2,11 +2,18 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Loader2, RefreshCw, CheckCircle, XCircle, Download, Trash2, Package } from 'lucide-react';
+import { Loader2, RefreshCw, CheckCircle, XCircle, Download, Trash2, Package, Mail } from 'lucide-react';
 import JSZip from 'jszip';
 
 // GSA constant reference (same as MasterBondSheet)
 const GSA_REFERENCE = 'GSA SF (Rev. 6/2022)';
+
+// Surety Company info (same as MasterBondSheet)
+const SURETY_COMPANY = {
+  name: 'FIDELITY AND DEPOSIT COMPANY OF MARYLAND',
+  address: 'c/o ZURICH NORTH AMERICA\n1299 ZURICH WAY',
+  cityStateZip: 'SCHAUMBURG, IL 60196-1056'
+};
 
 // US States + Canadian Provinces for lookups
 const STATES_PROVINCES = [
@@ -49,6 +56,10 @@ export default function ProcessorPage() {
   const [statusFilter, setStatusFilter] = useState('pending');
   const [message, setMessage] = useState('');
   const [progress, setProgress] = useState({ current: 0, total: 0 });
+  
+  // Email settings (when enabled, automatically uses single PDF mode - no ZIP)
+  const [sendEmail, setSendEmail] = useState(false);
+  const [recipientEmail, setRecipientEmail] = useState('proceeds4u@gmail.com');
 
   // Fetch submissions
   const fetchSubmissions = async () => {
@@ -105,64 +116,87 @@ export default function ProcessorPage() {
     };
   };
 
-  // Build package data (same logic as MasterBondSheet)
-  const buildPackageData = (formData) => {
-    const stateOfBirthFull = getStateName(formData.stateOfBirth);
+  // Build package data (COMPLETE - same logic as MasterBondSheet)
+  const buildPackageData = (data) => {
+    // 🔒 DEFENSIVE: Ensure all required fields have at least empty string defaults
+    const safeData = {
+      clientFullName: data.clientFullName || '',
+      trialCourtName: data.trialCourtName || '',
+      trialCourtType: data.trialCourtType || 'State',
+      courtCaseNumber: data.courtCaseNumber || '',
+      courtAddress: data.courtAddress || '',
+      courtCity: data.courtCity || '',
+      courtState: data.courtState || '',
+      courtZip: data.courtZip || '',
+      stateOfBirth: getStateName(data.stateOfBirth) || '',
+      birthCertificateNumber: data.birthCertificateNumber || '',
+      socialSecurityNumber: data.socialSecurityNumber || '',
+      ssnBackNumber: data.ssnBackNumber || '',
+      uccTrustNumber: data.uccTrustNumber || '',
+      dateBondExecuted: data.dateBondExecuted || 'Open',
+      thirdPartyName: data.thirdPartyName || '',
+      thirdPartyAddress: data.thirdPartyAddress || '',
+      thirdPartyCity: data.thirdPartyCity || '',
+      thirdPartyState: data.thirdPartyState || '',
+      thirdPartyZip: data.thirdPartyZip || '',
+      thirdPartyCounty: data.thirdPartyCounty || '',
+      prisonNumber: data.prisonNumber || '',
+      prisonName: data.prisonName || '',
+      prisonAddress: data.prisonAddress || '',
+      amountOwed: data.amountOwed || '',
+    };
     
-    // Format date of birth
-    let dobFormatted = '';
-    if (formData.dateOfBirth) {
-      const dob = new Date(formData.dateOfBirth);
-      dobFormatted = dob.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
-    }
+    // Build composite fields
+    const suretyBlockWithName = `${safeData.clientFullName}\n${SURETY_COMPANY.name}\n${SURETY_COMPANY.address}\n${SURETY_COMPANY.cityStateZip}`;
+    const suretyBlockNoName = `${SURETY_COMPANY.name}\n${SURETY_COMPANY.address}\n${SURETY_COMPANY.cityStateZip}`;
+    const courtReference = `${safeData.trialCourtName} Attn: Clerk; ${safeData.courtCaseNumber}`;
     
-    // Format date bond executed
-    let bondDateFormatted = formData.dateBondExecuted || 'Open';
-    if (bondDateFormatted && bondDateFormatted !== 'Open') {
-      const bondDate = new Date(bondDateFormatted);
-      bondDateFormatted = bondDate.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
-    }
+    const sf28Field7 = `${safeData.courtCaseNumber} - ${GSA_REFERENCE}\nBirth Certificate - [${safeData.stateOfBirth} - ${safeData.birthCertificateNumber}] and Social Security - [${safeData.socialSecurityNumber}]; Bond Number; Non-Negotiable set off [${safeData.birthCertificateNumber}];\nDeposited with the United States Treasury`;
+    const sf28Field8 = `${courtReference} - ${GSA_REFERENCE}`;
+    const sf28Field9 = `Bid Bond issued by ${courtReference} - ${GSA_REFERENCE}`;
+    const of91Claims = `${safeData.trialCourtName} Attn: Clerk;\n${safeData.courtCaseNumber} - See GSA FORMS; sf 24; sf 25A; sf 28; sf 273; sf 274; sf 275 and 91.`;
     
-    // Build principal address
-    const principalAddressParts = [];
-    if (formData.thirdPartyAddress) principalAddressParts.push(formData.thirdPartyAddress);
-    if (formData.thirdPartyCity) principalAddressParts.push(formData.thirdPartyCity);
-    if (formData.thirdPartyState) principalAddressParts.push(formData.thirdPartyState);
-    if (formData.thirdPartyZip) principalAddressParts.push(formData.thirdPartyZip);
-    const principalAddress = `${formData.clientFullName}\n${principalAddressParts.join(', ')}`;
+    // Build addresses
+    const zipWithBrackets = safeData.thirdPartyZip.startsWith('[') 
+      ? safeData.thirdPartyZip 
+      : (safeData.thirdPartyZip ? `[${safeData.thirdPartyZip}]` : '');
     
-    // Build SF28 field 7
-    const sf28Field7 = `${formData.courtCaseNumber} - ${GSA_REFERENCE}\nBirth Certificate - [${stateOfBirthFull} - ${formData.birthCertificateNumber}] and Social Security - [${formData.socialSecurityNumber}]; Bond Number; Non-Negotiable set off [${formData.birthCertificateNumber}];\nDeposited with the United States Treasury`;
+    const thirdPartyFullAddress = safeData.thirdPartyAddress 
+      ? `${safeData.thirdPartyAddress}\n${safeData.thirdPartyCity}, ${safeData.thirdPartyState} ${zipWithBrackets}`.trim()
+      : '';
     
+    const courtFullAddress = `${safeData.courtAddress}, ${safeData.courtCity}, ${safeData.courtState} ${safeData.courtZip}`.trim();
+
     return {
-      clientFullName: formData.clientFullName,
-      dateBondExecuted: bondDateFormatted,
-      courtCaseNumber: formData.courtCaseNumber,
-      pastConvictionsCaseNumbers: formData.pastConvictionsCaseNumbers,
-      birthCertificateNumber: formData.birthCertificateNumber,
-      stateOfBirth: stateOfBirthFull,
-      dateOfBirth: dobFormatted,
-      uccTrustNumber: formData.uccTrustNumber,
-      socialSecurityNumber: formData.socialSecurityNumber,
-      thirdPartyName: formData.thirdPartyName,
-      thirdPartyAddress: formData.thirdPartyAddress,
-      thirdPartyCity: formData.thirdPartyCity,
-      thirdPartyState: formData.thirdPartyState,
-      thirdPartyZip: formData.thirdPartyZip,
-      thirdPartyCounty: formData.thirdPartyCounty,
-      principalAddress: principalAddress,
-      prisonNumber: formData.prisonNumber,
-      prisonName: formData.prisonName,
-      prisonAddress: formData.prisonAddress,
-      trialCourtName: formData.trialCourtName,
-      trialCourtType: formData.trialCourtType,
-      courtAddress: formData.courtAddress,
-      courtCity: formData.courtCity,
-      courtState: formData.courtState,
-      courtZip: formData.courtZip,
-      amountOwed: formData.amountOwed,
-      sf28Field7: sf28Field7,
-      ssnBackNumber: formData.ssnBackNumber
+      dateBondExecuted: safeData.dateBondExecuted,
+      clientFullName: safeData.clientFullName,
+      stateOfBirth: safeData.stateOfBirth,
+      courtCaseNumber: safeData.courtCaseNumber,
+      socialSecurityNumber: safeData.socialSecurityNumber,
+      birthCertificateNumber: safeData.birthCertificateNumber,
+      uccTrustNumber: safeData.uccTrustNumber,
+      suretyBlockWithName,
+      suretyBlockNoName,
+      courtReference,
+      trialCourtName: safeData.trialCourtName,
+      trialCourtType: safeData.trialCourtType,
+      courtFullAddress,
+      thirdPartyName: safeData.thirdPartyName,
+      thirdPartyFullAddress,
+      thirdPartyState: safeData.thirdPartyState,
+      thirdPartyCounty: safeData.thirdPartyCounty,
+      prisonNumber: safeData.prisonNumber,
+      prisonName: safeData.prisonName,
+      prisonAddress: safeData.prisonAddress,
+      sf28Field7,
+      sf28Field8,
+      sf28Field9,
+      of91Claims,
+      amountOwed: safeData.amountOwed,
+      gsaReference: GSA_REFERENCE,
+      suretyCompanyName: SURETY_COMPANY.name,
+      suretyCompanyAddress: `${SURETY_COMPANY.address}\n${SURETY_COMPANY.cityStateZip}`,
+      ssnBackNumber: safeData.ssnBackNumber
     };
   };
 
@@ -195,6 +229,7 @@ export default function ProcessorPage() {
 
     const results = [];
     const zip = new JSZip();
+    const pdfFiles = []; // Store individual PDFs for single PDF mode
 
     for (let i = 0; i < toProcess.length; i++) {
       const submission = toProcess[i];
@@ -226,6 +261,7 @@ export default function ProcessorPage() {
         const fileName = `Completed_Package_${formData.clientFullName.replace(/\s+/g, '_')}_${formData.courtCaseNumber.replace(/\s+/g, '_')}.pdf`;
         
         zip.file(fileName, blob);
+        pdfFiles.push({ blob, fileName, name: formData.clientFullName }); // Store for single PDF mode
         results.push({ id: submission.id, success: true, name: formData.clientFullName });
 
         // Update status to completed
@@ -243,21 +279,84 @@ export default function ProcessorPage() {
       }
     }
 
-    // Download ZIP
+    // Download and optionally send email
     const successCount = results.filter(r => r.success).length;
     if (successCount > 0) {
-      const zipBlob = await zip.generateAsync({ type: 'blob' });
-      const url = window.URL.createObjectURL(zipBlob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Processed_Packages_${successCount}_${new Date().toISOString().split('T')[0]}.zip`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      const dateStr = new Date().toISOString().split('T')[0];
+      let downloadBlob, downloadFileName;
+      
+      // Email mode = Single PDF (no zip) for easy attachment
+      if (sendEmail) {
+        // Download each PDF individually
+        for (const pdf of pdfFiles) {
+          const url = window.URL.createObjectURL(pdf.blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = pdf.fileName;
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+          
+          // Small delay between downloads
+          await new Promise(resolve => setTimeout(resolve, 200));
+        }
+        
+        // For email, use the first/only PDF
+        downloadBlob = pdfFiles[0]?.blob;
+        downloadFileName = pdfFiles[0]?.fileName;
+      } else {
+        // ZIP mode: bundle all PDFs
+        downloadFileName = `Processed_Packages_${successCount}_${dateStr}.zip`;
+        downloadBlob = await zip.generateAsync({ type: 'blob' });
+        
+        // Download ZIP locally
+        const url = window.URL.createObjectURL(downloadBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = downloadFileName;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }
+      
+      // Send email if enabled (uses PDF in single mode, ZIP in batch mode)
+      if (sendEmail && recipientEmail && downloadBlob) {
+        try {
+          setMessage(`✅ Processed ${successCount} - Sending email...`);
+          
+          const clientNames = results.filter(r => r.success).map(r => r.name).join(', ');
+          const emailFormData = new FormData();
+          emailFormData.append('to', recipientEmail);
+          emailFormData.append('subject', `📋 Bond Package${successCount > 1 ? 's' : ''} Ready - ${dateStr}`);
+          emailFormData.append('body', `Your bond package${successCount > 1 ? 's' : ''} for the following client${successCount > 1 ? 's are' : ' is'} attached:\n\n${clientNames}\n\nTotal: ${successCount} package(s)`);
+          emailFormData.append('pdf', downloadBlob, downloadFileName);
+          emailFormData.append('fileName', downloadFileName);
+          
+          const emailResponse = await fetch('/api/send-email', {
+            method: 'POST',
+            body: emailFormData
+          });
+          
+          const emailResult = await emailResponse.json();
+          
+          if (emailResponse.ok) {
+            setMessage(`✅ Processed ${successCount}/${toProcess.length} - Email sent to ${recipientEmail}!`);
+          } else {
+            setMessage(`✅ Processed ${successCount} - ⚠️ Email failed: ${emailResult.error}`);
+          }
+        } catch (emailError) {
+          console.error('Email error:', emailError);
+          setMessage(`✅ Processed ${successCount} - ⚠️ Email failed: ${emailError.message}`);
+        }
+      } else {
+        setMessage(`✅ Processed ${successCount}/${toProcess.length} submissions`);
+      }
+    } else {
+      setMessage(`⚠️ No successful submissions`);
     }
 
-    setMessage(`✅ Processed ${successCount}/${toProcess.length} submissions`);
     setSelectedIds([]);
     setProcessing(false);
     fetchSubmissions(); // Refresh list
@@ -297,57 +396,93 @@ export default function ProcessorPage() {
         </div>
 
         {/* Controls */}
-        <div className="bg-gray-800 rounded-lg p-4 mb-6 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="bg-gray-700 text-white rounded px-3 py-2"
-            >
-              <option value="pending">Pending</option>
-              <option value="processing">Processing</option>
-              <option value="completed">Completed</option>
-              <option value="error">Errors</option>
-            </select>
-            
-            <button
-              onClick={fetchSubmissions}
-              disabled={loading}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
-            </button>
+        <div className="bg-gray-800 rounded-lg p-4 mb-6 flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="bg-gray-700 text-white rounded px-3 py-2"
+              >
+                <option value="pending">Pending</option>
+                <option value="processing">Processing</option>
+                <option value="completed">Completed</option>
+                <option value="error">Errors</option>
+              </select>
+              
+              <button
+                onClick={fetchSubmissions}
+                disabled={loading}
+                className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded"
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
 
-            <span className="text-gray-400">
-              {submissions.length} submission{submissions.length !== 1 ? 's' : ''}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-4">
-            {selectedIds.length > 0 && (
-              <span className="text-green-400">
-                {selectedIds.length} selected
+              <span className="text-gray-400">
+                {submissions.length} submission{submissions.length !== 1 ? 's' : ''}
               </span>
+            </div>
+
+            <div className="flex items-center gap-4">
+              {selectedIds.length > 0 && (
+                <span className="text-green-400">
+                  {selectedIds.length} selected
+                </span>
+              )}
+            
+              <button
+                onClick={processSelected}
+                disabled={processing || selectedIds.length === 0}
+                className="flex items-center gap-2 px-6 py-2 bg-green-600 hover:bg-green-500 disabled:bg-gray-600 disabled:cursor-not-allowed rounded font-bold"
+              >
+                {processing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Processing {progress.current}/{progress.total}...
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-4 h-4" />
+                    Process Selected
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+          
+          {/* Email Settings Row */}
+          <div className="flex items-center gap-4 border-t border-gray-700 pt-4">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={sendEmail}
+                onChange={(e) => setSendEmail(e.target.checked)}
+                className="w-4 h-4 rounded"
+              />
+              <span className="text-gray-300">📧 Send email after processing</span>
+            </label>
+            
+            {sendEmail && (
+              <>
+                <input
+                  type="email"
+                  value={recipientEmail}
+                  onChange={(e) => setRecipientEmail(e.target.value)}
+                  placeholder="recipient@email.com"
+                  className="bg-gray-700 text-white rounded px-3 py-2 w-64"
+                />
+                <span className="text-blue-400 text-sm">
+                  📄 PDFs will be saved individually (no ZIP)
+                </span>
+              </>
             )}
             
-            <button
-              onClick={processSelected}
-              disabled={processing || selectedIds.length === 0}
-              className="flex items-center gap-2 px-6 py-2 bg-green-600 hover:bg-green-500 disabled:bg-gray-600 disabled:cursor-not-allowed rounded font-bold"
-            >
-              {processing ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Processing {progress.current}/{progress.total}...
-                </>
-              ) : (
-                <>
-                  <Download className="w-4 h-4" />
-                  Process Selected
-                </>
-              )}
-            </button>
+            {!sendEmail && (
+              <span className="text-gray-500 text-sm">
+                📦 PDFs will be bundled in a ZIP file
+              </span>
+            )}
           </div>
         </div>
 

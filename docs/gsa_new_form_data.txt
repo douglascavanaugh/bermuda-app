@@ -647,23 +647,55 @@ Cortlandt Manor, NY [10567]
 
 
 
-bond date
-zip code
-county
+1. Dawn Christine Stenros
+2. Open
+3. CVME2402303
+4. n/a
+5. 139-70-040338
+6. New York
+7. 04/02/1970
+8. 20252020443
+9. 110-70-5767
+10. H63219984
+11. Dawn Christine Stenros
+12. 37846 Bear View Cir., Murrieta, CA [92562]
+13. Riverside County
+14.
+15.
+16.
+17. SUPERIOR COURT OF CALIFORNIA, COUNTY OF RIVERSIDE
+18. S
+19. 27401 Meniffe Center Dr., Meniffe, CA 92584
+20. 12,966.42
+
+---
+
+1. Letitia Roshelle Troutman
+2. Open
+3. D2-25-0238
+4. n/a
+5. 135-71-037082
+6. Oklahoma
+7. 11/30/1971
+8. 119692333
+9. 442-74-9259
+10. H68786013
+11. Letitia Roshelle Troutman
+12. 1943 Cherokee Trace, Tool, TX [75143]
+13. Henderson County
+14.
+15.
+16.
+17. JUSTICE COURT PRECINCT 2, HENDERSON COUNTY, TEXAS
+18. S
+19. 100 N Prairieville St. #101 PO Box 632, Athens, TX 75751
+20. 7,459.45
 
 
 
+tasa.americanstatenationals.org
 
-
-
-
-
-
-
-
-
-
-
+current conversion rate on mags site: total traffic and engagement vs sales?
 
 
 

@@ -246,10 +246,9 @@ export default function SPCForm() {
       // Calculate proper dimensions
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
-      const aspectRatio = viewportWidth / viewportHeight;
       
       const canvas = await html2canvas(element, {
-        scale: 2,
+        scale: 1, // Reduced from 2 to prevent PDF size overflow
         useCORS: true,
         logging: false,
         backgroundColor: '#1a1a1a',
@@ -259,10 +258,11 @@ export default function SPCForm() {
         windowHeight: viewportHeight,
         x: window.scrollX,
         y: window.scrollY,
-        preserveAspectRatio: true // Add this
+        preserveAspectRatio: true
       });
       
-      return canvas.toDataURL('image/png');
+      // Use JPEG with compression for smaller file size
+      return canvas.toDataURL('image/jpeg', 0.7);
     } catch (error) {
       console.error('Capture error:', error);
       return null;
@@ -281,61 +281,65 @@ export default function SPCForm() {
   //   }
   // };
 
-  const generatePDF = async (formData) => {
+  // Add 3 pages for a single person to an existing PDF document
+  const addPersonToDoc = async (doc, formData, isFirst, entryNumber, totalEntries) => {
     try {
-      // Stage 1: Capture form entry (full page)
-      setProcessStage('Capturing form data...');
-      const formImage = await captureElement('root', true);
-      
-      // Stage 2: Capture confirmation
-      setProcessStage('Capturing confirmation...');
-      setShowConfirmDialog(true);
-      await new Promise(resolve => setTimeout(resolve, 500));
-      const confirmationImage = await captureElement('root', true);
-      setShowConfirmDialog(false);
-  
-      // Stage 3: Generate PDF
-      setProcessStage('Generating PDF...');
-      const doc = new jsPDF();
-      
       // Calculate proper dimensions for PDF
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
       
       // Calculate dimensions maintaining browser window aspect ratio
       const browserAspectRatio = window.innerWidth / window.innerHeight;
-      const maxImageWidth = pageWidth - 20; // 10px margin on each side
-      const maxImageHeight = pageHeight - 20; // 10px margin on each side
+      const maxImageWidth = pageWidth - 20;
+      const maxImageHeight = pageHeight - 20;
       
-      // Calculate image dimensions that preserve aspect ratio
       let imageWidth = maxImageWidth;
       let imageHeight = imageWidth / browserAspectRatio;
       
-      // If height is too tall, scale based on height instead
       if (imageHeight > maxImageHeight) {
         imageHeight = maxImageHeight;
         imageWidth = imageHeight * browserAspectRatio;
       }
       
-      // Calculate centering offsets
       const xOffset = (pageWidth - imageWidth) / 2;
       const yOffset = (pageHeight - imageHeight) / 2;
-  
-      // First page: Form screenshot
-      if (formImage) {
-        doc.addImage(formImage, 'PNG', xOffset, yOffset, imageWidth, imageHeight);
+
+      // Stage 1: Capture form entry
+      setProcessStage(`Capturing form data for ${formData.firstName} ${formData.lastName}...`);
+      const formImage = await captureElement('root', true);
+      
+      // Stage 2: Capture confirmation
+      setProcessStage(`Capturing confirmation for ${formData.firstName} ${formData.lastName}...`);
+      setShowConfirmDialog(true);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const confirmationImage = await captureElement('root', true);
+      setShowConfirmDialog(false);
+
+      // Add pages to the document
+      // If not the first person, add a new page first
+      if (!isFirst) {
+        doc.addPage();
       }
-  
-      // Second page: Confirmation screenshot
+
+      // Page 1: Form screenshot
+      if (formImage) {
+        doc.addImage(formImage, 'JPEG', xOffset, yOffset, imageWidth, imageHeight);
+      }
+
+      // Page 2: Confirmation screenshot
       if (confirmationImage) {
         doc.addPage();
-        doc.addImage(confirmationImage, 'PNG', xOffset, yOffset, imageWidth, imageHeight);
+        doc.addImage(confirmationImage, 'JPEG', xOffset, yOffset, imageWidth, imageHeight);
       }
-  
-      // Third page: Form data
+
+      // Page 3: Form data summary
       doc.addPage();
       doc.setFontSize(16);
       doc.text('CASE TIN DATA', 105, 20, { align: 'center' });
+      
+      // Entry indicator
+      doc.setFontSize(10);
+      doc.text(`Entry ${entryNumber} of ${totalEntries}`, 105, 30, { align: 'center' });
       
       doc.setFontSize(12);
       const content = [
@@ -347,61 +351,19 @@ export default function SPCForm() {
       ];
       
       content.forEach((line, index) => {
-        doc.text(line, 20, 40 + (index * 10));
+        doc.text(line, 20, 50 + (index * 10));
       });
-  
+
       doc.setFontSize(20);
       doc.text('BOND', 105, 140, { align: 'center' });
       
       const timestamp = new Date().toLocaleString();
       doc.setFontSize(10);
       doc.text(`Generated: ${timestamp}`, 20, 280);
-      
-      // Save the PDF
-      const filename = `case-tin-${formData.lastName}-${formData.firstName}.pdf`;
-      
-      if (saveDirectory) {
-        try {
-          const pdfBlob = doc.output('blob');
-          const fileHandle = await saveDirectory.getFileHandle(filename, { create: true });
-          const writable = await fileHandle.createWritable();
-          await writable.write(pdfBlob);
-          await writable.close();
-        } catch (error) {
-          console.error('Error saving to directory:', error);
-          const pdfBlob = doc.output('blob');
-          const url = URL.createObjectURL(pdfBlob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = filename;
-          link.click();
-          URL.revokeObjectURL(url);
-        }
-      } else {
-        const pdfBlob = doc.output('blob');
-        const url = URL.createObjectURL(pdfBlob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = filename;
-        link.click();
-        URL.revokeObjectURL(url);
-      }
-  
-      // After successful PDF generation and save, remove the processed form
-      setFormDataList(prevList => 
-        prevList.filter(form => 
-          !(form.firstName === formData.firstName && 
-            form.lastName === formData.lastName && 
-            form.ssn === formData.ssn)
-        )
-      );
-  
-      setProcessStage('Complete');
+
       return true;
-  
     } catch (error) {
-      console.error('Error generating PDF:', error);
-      setProcessStage('Error: ' + error.message);
+      console.error('Error adding person to PDF:', error);
       return false;
     }
   };
@@ -436,7 +398,7 @@ export default function SPCForm() {
     }
   };
 
-  // Modify handleConfirmSubmit to process one at a time
+  // Process all entries into ONE combined PDF
   const handleConfirmSubmit = async () => {
     setIsProcessingBatch(true);
     setCurrentProcessingIndex(0);
@@ -445,10 +407,19 @@ export default function SPCForm() {
     setIsPaused(false);
     
     try {
-      for (let i = 0; i < formDataList.length; i++) {
+      // Create ONE PDF document for all entries
+      const doc = new jsPDF();
+      
+      // Take a snapshot of the list to iterate (since we'll be removing items)
+      const entriesToProcess = [...formDataList];
+      const totalEntries = entriesToProcess.length;
+      
+      setProcessStage('Starting combined PDF generation...');
+      
+      for (let i = 0; i < entriesToProcess.length; i++) {
         if (shouldCancel) {
           setSuccessMessage('Processing cancelled');
-          return; // Immediate return when cancelled
+          return;
         }
   
         // Check for pause
@@ -457,7 +428,7 @@ export default function SPCForm() {
         }
   
         setCurrentProcessingIndex(i);
-        const formData = formDataList[i];
+        const formData = entriesToProcess[i];
         
         setProgress({
           current: i + 1,
@@ -468,28 +439,58 @@ export default function SPCForm() {
         const formElement = document.getElementById(`form-entry-${formData.lastName}-${formData.firstName}`);
         formElement?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   
-        await new Promise(resolve => setTimeout(resolve, 500));
-        await generatePDF(formData);
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // Add this person's 3 pages to the combined document
+        const isFirst = (i === 0);
+        await addPersonToDoc(doc, formData, isFirst, i + 1, totalEntries);
+        
+        // Remove the processed person's card from the UI immediately
+        setFormDataList(prevList => 
+          prevList.filter(form => 
+            !(form.firstName === formData.firstName && 
+              form.lastName === formData.lastName && 
+              form.ssn === formData.ssn)
+          )
+        );
+        
+        await new Promise(resolve => setTimeout(resolve, 300));
       }
   
-      setSuccessMessage(shouldCancel ? 'Processing cancelled' : 'All forms successfully created!');
-      setTimeout(() => setSuccessMessage(''), 3000);
-      setCurrentForm(initialFormData);
-      
-      // Only clear the form list if not cancelled
+      // Save the combined PDF once at the end
       if (!shouldCancel) {
-        setFormDataList([]);
+        setProcessStage('Saving combined PDF...');
+        const timestamp = new Date().toISOString().split('T')[0];
+        const filename = `SPC_Combined_${totalEntries}_entries_${timestamp}.pdf`;
+        
+        try {
+          const pdfBlob = doc.output('blob');
+          const url = URL.createObjectURL(pdfBlob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = filename;
+          link.click();
+          URL.revokeObjectURL(url);
+          
+          setSuccessMessage(`✅ Combined PDF created with ${totalEntries} entries (${totalEntries * 3} pages)!`);
+          setTimeout(() => setSuccessMessage(''), 5000);
+          setCurrentForm(initialFormData);
+          // List is already empty from removing items one-by-one
+        } catch (saveError) {
+          console.error('Error saving PDF:', saveError);
+          setSuccessMessage(`Error saving PDF - file may be too large. Try fewer entries.`);
+        }
       }
       
     } catch (error) {
       console.error('Error processing forms:', error);
-      setSuccessMessage(`Error processing forms: ${error.message}`);
+      setSuccessMessage(`Error: ${error.message}`);
     } finally {
       setIsProcessingBatch(false);
       setCurrentProcessingIndex(-1);
       setShouldCancel(false);
       setIsPaused(false);
+      setProcessStage('');
     }
   };
 

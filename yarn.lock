@@ -1565,6 +1565,7 @@ __metadata:
     jszip: ^3.10.1
     lucide-react: ^0.485.0
     next: 16.1.0
+    nodemailer: ^7.0.12
     pdf-lib: 1.17.1
     pdf-parse: 2.4.3
     pdf2pic: 3.2.0
@@ -4042,6 +4043,13 @@ __metadata:
   version: 2.0.27
   resolution: "node-releases@npm:2.0.27"
   checksum: a9a54079d894704c2ec728a690b41fbc779a710f5d47b46fa3e460acff08a3e7dfa7108e5599b2db390aa31dac062c47c5118317201f12784188dc5b415f692d
+  languageName: node
+  linkType: hard
+
+"nodemailer@npm:^7.0.12":
+  version: 7.0.12
+  resolution: "nodemailer@npm:7.0.12"
+  checksum: 8e4f6d67c334c31c644ef9557a7f65cd1397340b84bc5cb2d3373032772a68577c5a11dbd4f227d42f7b4df40daad06a1b1c32e76c57c15b880b0ca468cc9713
   languageName: node
   linkType: hard
 

@@ -14,7 +14,7 @@ function Modal({ show, onClose, onSelect }) {
     { key: 'E', title: 'PACKAGE BATCH PROCESSOR', link: '/package-batch-processor' },
     { key: 'F', title: 'SINGLE FORM BATCH', link: '/batch-processor' },
     { key: 'G', title: 'COORDINATE MAPPER', link: '/coordinate-mapper' },
-    { key: 'H', title: 'TBD', view: 'TBD' },
+    { key: 'H', title: 'BOND PROCESSOR', link: '/processor' },
     { key: 'I', title: 'TBD', view: 'TBD' },
   ];
 

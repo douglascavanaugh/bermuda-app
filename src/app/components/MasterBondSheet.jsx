@@ -1031,7 +1031,7 @@ export default function MasterBondSheet({ isProduction = false }) {
     const sf28Field7 = `${safeData.courtCaseNumber} - ${GSA_REFERENCE}\nBirth Certificate - [${safeData.stateOfBirth} - ${safeData.birthCertificateNumber}] and Social Security - [${safeData.socialSecurityNumber}]; Bond Number; Non-Negotiable set off [${safeData.birthCertificateNumber}];\nDeposited with the United States Treasury`;
     const sf28Field8 = `${courtReference} - ${GSA_REFERENCE}`;
     const sf28Field9 = `Bid Bond issued by ${courtReference} - ${GSA_REFERENCE}`;
-    const of91Claims = `${courtReference} - ${GSA_REFERENCE}`;
+    const of91Claims = `${safeData.trialCourtName} Attn: Clerk;\n${safeData.courtCaseNumber} - See GSA FORMS; sf 24; sf 25A; sf 28; sf 273; sf 274; sf 275 and 91.`;
     // 🎖️ FIXED: Principal address uses ZIP, not County
     // Build address using safeData
     const zipWithBrackets = safeData.thirdPartyZip.startsWith('[') 

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import nodemailer from 'nodemailer';
 
 // Use service role for server-side operations
 const getSupabase = () => {
@@ -17,6 +18,53 @@ const getSupabase = () => {
     }
   });
 };
+
+// Send email notification for new submission
+async function sendNotificationEmail(clientName, submittedAt) {
+  try {
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: parseInt(process.env.SMTP_PORT || '587'),
+      secure: process.env.SMTP_SECURE === 'true',
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    });
+
+    const formattedDate = new Date(submittedAt).toLocaleString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+      timeZoneName: 'short'
+    });
+
+    await transporter.sendMail({
+      from: process.env.SMTP_FROM || process.env.SMTP_USER,
+      to: 'beentheredonethatgtts@protonmail.com',
+      subject: `New Bond Submission - ${clientName}`,
+      text: `New Bond Submission\n\nClient: ${clientName}\nSubmitted: ${formattedDate}\n\nPlease process this submission at your earliest convenience.`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 500px; padding: 20px;">
+          <h2 style="color: #2563eb; margin-bottom: 20px;">New Bond Submission</h2>
+          <p style="font-size: 16px; margin: 10px 0;"><strong>Client:</strong> ${clientName}</p>
+          <p style="font-size: 16px; margin: 10px 0;"><strong>Submitted:</strong> ${formattedDate}</p>
+          <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;" />
+          <p style="font-size: 14px; color: #6b7280;">Please process this submission at your earliest convenience.</p>
+        </div>
+      `,
+    });
+
+    console.log('📧 Notification email sent for:', clientName);
+  } catch (error) {
+    // Log but don't fail the submission if email fails
+    console.error('⚠️ Failed to send notification email:', error.message);
+  }
+}
 
 export async function POST(request) {
   try {
@@ -78,6 +126,9 @@ export async function POST(request) {
     }
     
     console.log('✅ Bond submission saved:', result.id);
+    
+    // Send notification email (non-blocking)
+    sendNotificationEmail(data.clientFullName, result.created_at);
     
     return NextResponse.json({
       success: true,
