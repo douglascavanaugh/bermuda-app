@@ -13,7 +13,18 @@ import tempfile
 import logging
 import gc  # 🎖️ NUCLEAR GRADE: Garbage collection for memory cleanup
 import copy  # 🎖️ NUCLEAR GRADE: Deep copy for buffer isolation
+import threading
+import time
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email.mime.text import MIMEText
+from email import encoders
+from dotenv import load_dotenv
 # OCR imports removed - going with manual coordinate mapping instead
+
+# Load environment variables
+load_dotenv()
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -1871,6 +1882,332 @@ def map_to_form_fields(form_name, master_data, package_data):
     return package_data
 
 
+# ============================================================================
+# 🚀 AUTO-POLLING: Automatically process pending submissions from Supabase
+# ============================================================================
+
+# Configuration
+POLL_INTERVAL_SECONDS = int(os.environ.get('POLL_INTERVAL', 60))  # Default: check every 60 seconds
+AUTO_POLL_ENABLED = os.environ.get('AUTO_POLL_ENABLED', 'true').lower() == 'true'
+PDF_OUTPUT_DIR = os.environ.get('PDF_OUTPUT_DIR', '/Users/apple/Desktop/development/bermuda-app/bermuda-app/public/completed_forms')
+
+# Email configuration
+SMTP_HOST = os.environ.get('SMTP_HOST', 'smtp.gmail.com')
+SMTP_PORT = int(os.environ.get('SMTP_PORT', 587))
+SMTP_USER = os.environ.get('SMTP_USER', '')
+SMTP_PASS = os.environ.get('SMTP_PASS', '')
+SMTP_FROM = os.environ.get('SMTP_FROM', SMTP_USER)
+EMAIL_TO = 'proceeds4u@gmail.com'
+EMAIL_CC = 'beentheredonethatgtts@protonmail.com'
+
+# Supabase configuration
+SUPABASE_URL = os.environ.get('NEXT_PUBLIC_SUPABASE_URL', '')
+SUPABASE_SERVICE_KEY = os.environ.get('SUPABASE_SERVICE_ROLE_KEY', '')
+
+def get_supabase_client():
+    """Initialize Supabase client"""
+    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+        logger.warning("⚠️ Supabase not configured - auto-polling disabled")
+        return None
+    try:
+        from supabase import create_client
+        return create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+    except ImportError:
+        logger.warning("⚠️ Supabase package not installed - run: pip install supabase")
+        return None
+    except Exception as e:
+        logger.error(f"❌ Failed to create Supabase client: {e}")
+        return None
+
+def fetch_pending_submissions():
+    """Fetch all pending submissions from Supabase"""
+    supabase = get_supabase_client()
+    if not supabase:
+        return []
+    
+    try:
+        result = supabase.table('bond_submissions').select('*').eq('status', 'pending').order('created_at').execute()
+        return result.data or []
+    except Exception as e:
+        logger.error(f"❌ Failed to fetch pending submissions: {e}")
+        return []
+
+def update_submission_status(submission_id, status, error_message=None):
+    """Update submission status in Supabase"""
+    supabase = get_supabase_client()
+    if not supabase:
+        return False
+    
+    try:
+        update_data = {
+            'status': status,
+            'updated_at': datetime.utcnow().isoformat()
+        }
+        if status == 'completed':
+            update_data['processed_at'] = datetime.utcnow().isoformat()
+            update_data['pdf_generated'] = True
+        if error_message:
+            update_data['error_message'] = error_message
+            
+        supabase.table('bond_submissions').update(update_data).eq('id', submission_id).execute()
+        return True
+    except Exception as e:
+        logger.error(f"❌ Failed to update submission status: {e}")
+        return False
+
+def build_package_data_from_submission(sub):
+    """
+    Convert snake_case database record to camelCase package_data format
+    Also computes derived fields like thirdPartyFullAddress, courtFullAddress, etc.
+    """
+    # Build the full addresses
+    third_party_zip = sub.get('third_party_zip', '') or ''
+    zip_with_brackets = third_party_zip if third_party_zip.startswith('[') else f"[{third_party_zip}]"
+    
+    third_party_full_address = f"{sub.get('third_party_address', '') or ''}\n{sub.get('third_party_city', '') or ''}, {sub.get('third_party_state', '') or ''} {zip_with_brackets}".strip()
+    
+    court_full_address = f"{sub.get('court_address', '') or ''}\n{sub.get('court_city', '') or ''}, {sub.get('court_state', '') or ''} {sub.get('court_zip', '') or ''}".strip()
+    
+    trial_court_name = sub.get('trial_court_name', '') or ''
+    court_case_number = sub.get('court_case_number', '') or ''
+    trial_court_type = sub.get('trial_court_type', 'State') or 'State'
+    
+    # Build court reference
+    court_reference = f"{trial_court_name} ({trial_court_type})" if trial_court_type else trial_court_name
+    
+    # Surety block with name
+    surety_block = "Depository Trust Company\n55 Water St.\nNew York, New York [10041-0099]"
+    surety_block_with_name = f"{sub.get('client_full_name', '') or ''}\n{surety_block}"
+    
+    # GSA reference
+    gsa_reference = "See GSA FORMS; sf 24; sf 25A; sf 28; sf 273; sf 274; sf 275 and 91."
+    
+    # OF91 Claims field
+    of91_claims = f"{trial_court_name} Attn: Clerk;\n{court_case_number} - See GSA FORMS; sf 24; sf 25A; sf 28; sf 273; sf 274; sf 275 and 91."
+    
+    return {
+        'clientFullName': sub.get('client_full_name', '') or '',
+        'dateBondExecuted': sub.get('date_bond_executed', '') or 'Open',
+        'courtCaseNumber': court_case_number,
+        'pastConvictionsCaseNumbers': sub.get('past_convictions_case_numbers', '') or '',
+        'birthCertificateNumber': sub.get('birth_certificate_number', '') or '',
+        'stateOfBirth': sub.get('state_of_birth', '') or '',
+        'dateOfBirth': sub.get('date_of_birth', '') or '',
+        'uccTrustNumber': sub.get('ucc_trust_number', '') or '',
+        'socialSecurityNumber': sub.get('social_security_number', '') or '',
+        'ssnBackNumber': sub.get('ssn_back_number', '') or '',
+        'thirdPartyName': sub.get('third_party_name', '') or '',
+        'thirdPartyAddress': sub.get('third_party_address', '') or '',
+        'thirdPartyCity': sub.get('third_party_city', '') or '',
+        'thirdPartyState': sub.get('third_party_state', '') or '',
+        'thirdPartyZip': third_party_zip,
+        'thirdPartyCounty': sub.get('third_party_county', '') or '',
+        'thirdPartyFullAddress': third_party_full_address,
+        'prisonNumber': sub.get('prison_number', '') or '',
+        'prisonName': sub.get('prison_name', '') or '',
+        'prisonAddress': sub.get('prison_address', '') or '',
+        'trialCourtName': trial_court_name,
+        'trialCourtType': trial_court_type,
+        'courtAddress': sub.get('court_address', '') or '',
+        'courtCity': sub.get('court_city', '') or '',
+        'courtState': sub.get('court_state', '') or '',
+        'courtZip': sub.get('court_zip', '') or '',
+        'courtFullAddress': court_full_address,
+        'courtReference': court_reference,
+        'amountOwed': sub.get('amount_owed', '') or '',
+        'suretyBlockWithName': surety_block_with_name,
+        'of91Claims': of91_claims,
+    }
+
+def send_email_with_pdf(pdf_path, client_name):
+    """Send email with PDF attachment to both recipients"""
+    if not SMTP_USER or not SMTP_PASS:
+        logger.warning("⚠️ SMTP not configured - skipping email")
+        return False
+    
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = SMTP_FROM
+        msg['To'] = EMAIL_TO
+        msg['Cc'] = EMAIL_CC
+        msg['Subject'] = f"📋 Bond Package Ready - {client_name}"
+        
+        # Email body
+        body = f"""Your bond package for {client_name} has been automatically processed and is attached.
+
+Generated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}
+
+This is an automated message from the Bond Processing System.
+"""
+        msg.attach(MIMEText(body, 'plain'))
+        
+        # Attach PDF
+        with open(pdf_path, 'rb') as attachment:
+            part = MIMEBase('application', 'pdf')
+            part.set_payload(attachment.read())
+            encoders.encode_base64(part)
+            part.add_header(
+                'Content-Disposition',
+                f'attachment; filename="{os.path.basename(pdf_path)}"'
+            )
+            msg.attach(part)
+        
+        # Send email
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+            server.starttls()
+            server.login(SMTP_USER, SMTP_PASS)
+            # Send to both TO and CC
+            recipients = [EMAIL_TO, EMAIL_CC]
+            server.sendmail(SMTP_FROM, recipients, msg.as_string())
+        
+        logger.info(f"📧 Email sent to {EMAIL_TO} (CC: {EMAIL_CC}) for {client_name}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"❌ Failed to send email: {e}")
+        return False
+
+def process_single_submission(submission):
+    """Process a single pending submission"""
+    submission_id = submission.get('id')
+    client_name = submission.get('client_full_name', 'Unknown')
+    
+    logger.info(f"{'='*60}")
+    logger.info(f"🚀 AUTO-PROCESSING: {client_name} (ID: {submission_id})")
+    logger.info(f"{'='*60}")
+    
+    try:
+        # Mark as processing
+        update_submission_status(submission_id, 'processing')
+        
+        # Build package data from submission
+        package_data = build_package_data_from_submission(submission)
+        
+        # Generate the bond package using existing logic
+        # We'll simulate the API call internally
+        forms = ['SF24', 'SF25', 'SF28', 'SF1418', 'SF273', 'SF274', 'SF275', 'OF91']
+        
+        merged_pdf = PdfWriter()
+        temp_pdf_files = []
+        generated_forms = []
+        
+        form_schemas = {
+            'SF24': ('sf24_23a', 'SF24-23a.pdf'),
+            'SF25': ('sf25a_23a', 'SF25a-23a.pdf'),
+            'SF28': ('sf28_23a', 'SF28-23a.pdf'),
+            'SF1418': ('sf1418_23a', 'SF1418-23a.pdf'),
+            'SF273': ('sf273_23a', 'SF273-23a.pdf'),
+            'SF274': ('sf274_23a', 'SF274-23a.pdf'),
+            'SF275': ('sf275_23a', 'SF275-23a.pdf'),
+            'OF91': ('of_91', 'OF-91.pdf')
+        }
+        
+        for form_name in forms:
+            gc.collect()
+            form_info = form_schemas.get(form_name)
+            if not form_info:
+                continue
+                
+            template_type, pdf_filename = form_info
+            
+            # Map data to form fields
+            form_data = map_to_form_fields(form_name, {}, package_data)
+            
+            # Generate the form
+            pdf_buffer = create_gsa_pdf_overlay(form_data, template_type)
+            
+            if pdf_buffer and pdf_buffer.getvalue():
+                # Save to temp file
+                temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
+                temp_file.write(pdf_buffer.getvalue())
+                temp_file.flush()
+                temp_file.close()
+                temp_pdf_files.append(temp_file.name)
+                
+                # Add to merged PDF
+                temp_reader = PdfReader(temp_file.name)
+                for page in temp_reader.pages:
+                    merged_pdf.add_page(page)
+                generated_forms.append(form_name)
+                logger.info(f"✅ Generated: {form_name}")
+        
+        if not generated_forms:
+            raise Exception("No forms were generated")
+        
+        # Create output directory with date
+        date_str = datetime.now().strftime('%Y-%m-%d')
+        output_dir = os.path.join(PDF_OUTPUT_DIR, date_str)
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # Save the merged PDF
+        safe_name = ''.join(c for c in client_name if c.isalnum() or c in ' -_').strip()
+        filename = f"Completed_Package_{safe_name}.pdf"
+        output_path = os.path.join(output_dir, filename)
+        
+        with open(output_path, 'wb') as f:
+            merged_pdf.write(f)
+        
+        logger.info(f"📄 Saved: {output_path}")
+        
+        # Clean up temp files
+        for temp_file in temp_pdf_files:
+            try:
+                os.unlink(temp_file)
+            except:
+                pass
+        
+        # Send email
+        send_email_with_pdf(output_path, client_name)
+        
+        # Mark as completed
+        update_submission_status(submission_id, 'completed')
+        logger.info(f"✅ COMPLETED: {client_name}")
+        
+        return True
+        
+    except Exception as e:
+        error_msg = str(e)
+        logger.error(f"❌ FAILED: {client_name} - {error_msg}")
+        update_submission_status(submission_id, 'error', error_msg)
+        return False
+
+def poll_for_submissions():
+    """Background thread that polls for pending submissions"""
+    logger.info(f"🔄 Auto-polling started (interval: {POLL_INTERVAL_SECONDS}s)")
+    
+    while True:
+        try:
+            pending = fetch_pending_submissions()
+            
+            if pending:
+                logger.info(f"📬 Found {len(pending)} pending submission(s)")
+                for submission in pending:
+                    process_single_submission(submission)
+            
+        except Exception as e:
+            logger.error(f"❌ Polling error: {e}")
+        
+        time.sleep(POLL_INTERVAL_SECONDS)
+
+def start_auto_polling():
+    """Start the auto-polling background thread"""
+    if not AUTO_POLL_ENABLED:
+        logger.info("ℹ️ Auto-polling is disabled (set AUTO_POLL_ENABLED=true to enable)")
+        return
+    
+    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+        logger.warning("⚠️ Supabase not configured - auto-polling disabled")
+        logger.warning("   Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY")
+        return
+    
+    polling_thread = threading.Thread(target=poll_for_submissions, daemon=True)
+    polling_thread.start()
+    logger.info("🚀 Auto-polling thread started!")
+
+
 if __name__ == '__main__':
+    # Start auto-polling in background
+    start_auto_polling()
+    
     port = int(os.environ.get('PORT', 5001))  # 🔥 FIXED: Default to port 5001!
     app.run(host='0.0.0.0', port=port, debug=True)

@@ -8,3 +8,5 @@ gunicorn>=21.0.0
 requests>=2.31.0
 pdf2image>=1.16.0
 # OCR dependencies removed - using manual coordinate mapping
+# Auto-polling dependencies
+supabase>=2.0.0
