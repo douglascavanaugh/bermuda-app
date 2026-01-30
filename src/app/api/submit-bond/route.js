@@ -19,6 +19,28 @@ const getSupabase = () => {
   });
 };
 
+// Send push notification via ntfy.sh (FREE!)
+async function sendPushNotification(clientName) {
+  try {
+    // Topic name is like a password - keep it secret!
+    const topic = process.env.NTFY_TOPIC || 'bermuda-bonds-gslc-2026';
+    
+    await fetch(`https://ntfy.sh/${topic}`, {
+      method: 'POST',
+      headers: {
+        'Title': 'New Bond Submission',
+        'Priority': 'high',
+        'Tags': 'moneybag,rotating_light'
+      },
+      body: `${clientName} just submitted a bond form!`
+    });
+    
+    console.log('📱 Push notification sent for:', clientName);
+  } catch (error) {
+    console.error('⚠️ Failed to send push notification:', error.message);
+  }
+}
+
 // Send email notification for new submission
 async function sendNotificationEmail(clientName, submittedAt) {
   try {
@@ -127,7 +149,8 @@ export async function POST(request) {
     
     console.log('✅ Bond submission saved:', result.id);
     
-    // Send notification email (non-blocking)
+    // Send notifications (non-blocking)
+    sendPushNotification(data.clientFullName);
     sendNotificationEmail(data.clientFullName, result.created_at);
     
     return NextResponse.json({
