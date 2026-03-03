@@ -2098,11 +2098,14 @@ def process_single_submission(submission):
         # Generate the bond package using existing logic
         # We'll simulate the API call internally
         forms = ['SF24', 'SF25', 'SF28', 'SF1418', 'SF273', 'SF274', 'SF275', 'OF91']
+        EXPECTED_FORMS = 8  # 🎖️ MILITARY GRADE: Must have all 8 forms
+        MIN_FILE_SIZE_KB = 500  # 🎖️ A valid package should be at least 500KB
         
         merged_pdf = PdfWriter()
         temp_pdf_files = []
         generated_forms = []
         active_readers = []  # 🎖️ CRITICAL: Keep readers alive to prevent blank pages!
+        total_pages = 0  # 🎖️ Track total pages for validation
         
         form_schemas = {
             'SF24': ('sf24_23a', 'SF24-23a.pdf'),
@@ -2115,11 +2118,14 @@ def process_single_submission(submission):
             'OF91': ('of_91', 'OF-91.pdf')
         }
         
+        logger.info(f"🎖️ MILITARY GRADE PROCESSING: Generating {len(forms)} forms...")
+        
         for form_name in forms:
             gc.collect()
             form_info = form_schemas.get(form_name)
             if not form_info:
-                continue
+                logger.error(f"❌ VALIDATION FAILED: Unknown form type {form_name}")
+                raise Exception(f"Unknown form type: {form_name}")
                 
             template_type, pdf_filename = form_info
             
@@ -2129,24 +2135,63 @@ def process_single_submission(submission):
             # Generate the form
             pdf_buffer = create_gsa_pdf_overlay(form_data, template_type)
             
-            if pdf_buffer and pdf_buffer.getvalue():
-                # Save to temp file
-                temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
-                temp_file.write(pdf_buffer.getvalue())
-                temp_file.flush()
-                temp_file.close()
-                temp_pdf_files.append(temp_file.name)
-                
-                # Add to merged PDF - KEEP READER ALIVE!
-                temp_reader = PdfReader(temp_file.name)
-                active_readers.append(temp_reader)  # 🎖️ Prevent garbage collection!
-                for page in temp_reader.pages:
-                    merged_pdf.add_page(page)
-                generated_forms.append(form_name)
-                logger.info(f"✅ Generated: {form_name}")
+            # 🎖️ VALIDATION 1: Check buffer has content
+            if not pdf_buffer:
+                logger.error(f"❌ VALIDATION FAILED: {form_name} returned None buffer")
+                raise Exception(f"Form {form_name} generation returned None")
+            
+            buffer_content = pdf_buffer.getvalue()
+            if not buffer_content or len(buffer_content) < 1000:
+                logger.error(f"❌ VALIDATION FAILED: {form_name} buffer too small ({len(buffer_content) if buffer_content else 0} bytes)")
+                raise Exception(f"Form {form_name} buffer too small - likely empty")
+            
+            logger.info(f"✅ {form_name}: Buffer OK ({len(buffer_content)} bytes)")
+            
+            # Save to temp file
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
+            temp_file.write(buffer_content)
+            temp_file.flush()
+            temp_file.close()
+            temp_pdf_files.append(temp_file.name)
+            
+            # 🎖️ VALIDATION 2: Re-read and verify temp file
+            temp_reader = PdfReader(temp_file.name)
+            page_count = len(temp_reader.pages)
+            
+            if page_count == 0:
+                logger.error(f"❌ VALIDATION FAILED: {form_name} has 0 pages after save")
+                raise Exception(f"Form {form_name} has 0 pages")
+            
+            # 🎖️ VALIDATION 3: Check each page has content
+            for i, page in enumerate(temp_reader.pages):
+                # Check page has some content (media box dimensions)
+                if page.mediabox:
+                    width = float(page.mediabox.width)
+                    height = float(page.mediabox.height)
+                    if width < 100 or height < 100:
+                        logger.warning(f"⚠️ {form_name} page {i+1} has unusual dimensions: {width}x{height}")
+            
+            # Keep reader alive and add pages
+            active_readers.append(temp_reader)
+            for page in temp_reader.pages:
+                merged_pdf.add_page(page)
+                total_pages += 1
+            
+            generated_forms.append(form_name)
+            logger.info(f"✅ {form_name}: {page_count} page(s) merged (total: {total_pages})")
         
-        if not generated_forms:
-            raise Exception("No forms were generated")
+        # 🎖️ VALIDATION 4: Verify all forms generated
+        if len(generated_forms) != EXPECTED_FORMS:
+            logger.error(f"❌ VALIDATION FAILED: Only {len(generated_forms)}/{EXPECTED_FORMS} forms generated")
+            logger.error(f"   Missing: {set(forms) - set(generated_forms)}")
+            raise Exception(f"Only {len(generated_forms)}/{EXPECTED_FORMS} forms generated")
+        
+        # 🎖️ VALIDATION 5: Verify minimum page count (each form has at least 1 page)
+        if total_pages < EXPECTED_FORMS:
+            logger.error(f"❌ VALIDATION FAILED: Only {total_pages} pages (expected at least {EXPECTED_FORMS})")
+            raise Exception(f"Only {total_pages} pages generated")
+        
+        logger.info(f"✅ All {EXPECTED_FORMS} forms generated with {total_pages} total pages")
         
         # Create output directory with date
         date_str = datetime.now().strftime('%Y-%m-%d')
@@ -2161,21 +2206,54 @@ def process_single_submission(submission):
         with open(output_path, 'wb') as f:
             merged_pdf.write(f)
         
+        # 🎖️ VALIDATION 6: Verify saved file size
+        file_size = os.path.getsize(output_path)
+        file_size_kb = file_size / 1024
+        
+        if file_size_kb < MIN_FILE_SIZE_KB:
+            logger.error(f"❌ VALIDATION FAILED: File too small ({file_size_kb:.1f}KB < {MIN_FILE_SIZE_KB}KB)")
+            os.unlink(output_path)  # Delete the bad file
+            raise Exception(f"Generated PDF too small ({file_size_kb:.1f}KB) - likely has blank pages")
+        
+        logger.info(f"✅ File size OK: {file_size_kb:.1f}KB")
+        
+        # 🎖️ VALIDATION 7: Final verification - re-read saved PDF and count pages
+        final_reader = PdfReader(output_path)
+        final_page_count = len(final_reader.pages)
+        
+        if final_page_count != total_pages:
+            logger.error(f"❌ VALIDATION FAILED: Final PDF has {final_page_count} pages, expected {total_pages}")
+            os.unlink(output_path)
+            raise Exception(f"Final PDF page count mismatch: {final_page_count} vs {total_pages}")
+        
+        # 🎖️ VALIDATION 8: Check final PDF pages aren't blank (have content streams)
+        blank_pages = []
+        for i, page in enumerate(final_reader.pages):
+            # Check if page has content stream
+            if '/Contents' not in page and not page.get('/Resources'):
+                blank_pages.append(i + 1)
+        
+        if blank_pages:
+            logger.error(f"❌ VALIDATION FAILED: Blank pages detected: {blank_pages}")
+            os.unlink(output_path)
+            raise Exception(f"Blank pages detected in final PDF: {blank_pages}")
+        
+        logger.info(f"✅ FINAL VALIDATION PASSED: {final_page_count} pages, {file_size_kb:.1f}KB, no blank pages")
         logger.info(f"📄 Saved: {output_path}")
         
-        # Clean up temp files
+        # Clean up temp files (ONLY after all validations pass)
         for temp_file in temp_pdf_files:
             try:
                 os.unlink(temp_file)
             except:
                 pass
         
-        # Send email
+        # 🎖️ Only send email if ALL validations passed
         send_email_with_pdf(output_path, client_name)
         
         # Mark as completed
         update_submission_status(submission_id, 'completed')
-        logger.info(f"✅ COMPLETED: {client_name}")
+        logger.info(f"✅ COMPLETED: {client_name} - ALL VALIDATIONS PASSED")
         
         return True
         
