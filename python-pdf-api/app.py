@@ -2260,8 +2260,82 @@ def process_single_submission(submission):
     except Exception as e:
         error_msg = str(e)
         logger.error(f"❌ FAILED: {client_name} - {error_msg}")
-        update_submission_status(submission_id, 'error', error_msg)
-        return False
+        return False, error_msg  # Return tuple for retry handling
+
+def send_failure_alert(client_name, error_msg, attempts):
+    """Send email alert when processing fails after all retries"""
+    if not SMTP_USER or not SMTP_PASS:
+        logger.warning("⚠️ SMTP not configured - cannot send failure alert")
+        return
+    
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = SMTP_FROM
+        msg['To'] = EMAIL_CC  # Send to protonmail for alerts
+        msg['Subject'] = f"🚨 BOND PROCESSING FAILED - {client_name}"
+        
+        body = f"""⚠️ CRITICAL: Bond package generation FAILED
+
+Client: {client_name}
+Error: {error_msg}
+Attempts: {attempts}
+Time: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}
+
+This submission has been marked as ERROR in the database.
+
+To retry, run: bermuda-retry
+
+Or manually reset the status in Supabase to 'pending'.
+"""
+        msg.attach(MIMEText(body, 'plain'))
+        
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+            server.starttls()
+            server.login(SMTP_USER, SMTP_PASS)
+            server.sendmail(SMTP_FROM, [EMAIL_CC], msg.as_string())
+        
+        logger.info(f"🚨 Failure alert sent for {client_name}")
+        
+    except Exception as e:
+        logger.error(f"❌ Failed to send failure alert: {e}")
+
+def process_with_retry(submission, max_retries=3, retry_delay=5):
+    """
+    🎖️ MILITARY GRADE: Process submission with automatic retry
+    Tries up to max_retries times before marking as error
+    """
+    submission_id = submission.get('id')
+    client_name = submission.get('client_full_name', 'Unknown')
+    
+    for attempt in range(1, max_retries + 1):
+        logger.info(f"🔄 Attempt {attempt}/{max_retries} for {client_name}")
+        
+        result = process_single_submission(submission)
+        
+        # Success case
+        if result is True:
+            return True
+        
+        # Failed - check if we should retry
+        if attempt < max_retries:
+            logger.warning(f"⚠️ Attempt {attempt} failed, retrying in {retry_delay}s...")
+            time.sleep(retry_delay)
+            # Force garbage collection between retries
+            gc.collect()
+        else:
+            # All retries exhausted
+            error_msg = result[1] if isinstance(result, tuple) else "Unknown error"
+            logger.error(f"❌ ALL {max_retries} ATTEMPTS FAILED for {client_name}")
+            
+            # Mark as error in database
+            update_submission_status(submission_id, 'error', f"Failed after {max_retries} attempts: {error_msg}")
+            
+            # Send failure alert email
+            send_failure_alert(client_name, error_msg, max_retries)
+            
+            return False
+    
+    return False
 
 def poll_for_submissions():
     """Background thread that polls for pending submissions"""
@@ -2274,7 +2348,7 @@ def poll_for_submissions():
             if pending:
                 logger.info(f"📬 Found {len(pending)} pending submission(s)")
                 for submission in pending:
-                    process_single_submission(submission)
+                    process_with_retry(submission)  # 🎖️ Use retry wrapper
             
         except Exception as e:
             logger.error(f"❌ Polling error: {e}")
