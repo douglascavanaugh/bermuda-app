@@ -2102,6 +2102,7 @@ def process_single_submission(submission):
         merged_pdf = PdfWriter()
         temp_pdf_files = []
         generated_forms = []
+        active_readers = []  # 🎖️ CRITICAL: Keep readers alive to prevent blank pages!
         
         form_schemas = {
             'SF24': ('sf24_23a', 'SF24-23a.pdf'),
@@ -2136,8 +2137,9 @@ def process_single_submission(submission):
                 temp_file.close()
                 temp_pdf_files.append(temp_file.name)
                 
-                # Add to merged PDF
+                # Add to merged PDF - KEEP READER ALIVE!
                 temp_reader = PdfReader(temp_file.name)
+                active_readers.append(temp_reader)  # 🎖️ Prevent garbage collection!
                 for page in temp_reader.pages:
                     merged_pdf.add_page(page)
                 generated_forms.append(form_name)
