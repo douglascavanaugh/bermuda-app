@@ -3,10 +3,11 @@
 import { useEffect } from 'react';
 import Link from 'next/link';
 
-function Modal({ show, onClose, onSelect }) {
+function Modal({ show, onClose, onSelect, isProduction = false }) {
   if (!show) return null;
 
-  const menuItems = [
+  // Full menu for development
+  const allMenuItems = [
     { key: 'A', title: 'BERMUDA', view: 'BERMUDA' },
     { key: 'B', title: 'HAWAII', view: 'HAWAII' },
     { key: 'C', title: 'SPC', view: 'SPC' },
@@ -17,6 +18,14 @@ function Modal({ show, onClose, onSelect }) {
     { key: 'H', title: 'BOND PROCESSOR', link: '/processor' },
     { key: 'I', title: 'TBD', view: 'TBD' },
   ];
+
+  // Production menu - only MASTER BOND SHEET and SPC
+  const productionMenuItems = [
+    { key: 'A', title: 'MASTER BOND SHEET', view: 'MASTER_BOND_SHEET' },
+    { key: 'B', title: 'SPC', view: 'SPC' },
+  ];
+
+  const menuItems = isProduction ? productionMenuItems : allMenuItems;
 
   const handleSelect = (item) => {
     onSelect(item.view);  // Pass the view name instead of title

@@ -22,11 +22,6 @@ export default function Home() {
     setIsProduction(!isLocalhost);
   }, []);
 
-  // PRODUCTION: Only show Master Bond Sheet with production mode enabled
-  if (isProduction) {
-    return <MasterBondSheet isProduction={true} />;
-  }
-
   const handleModalSelect = (title) => {
     console.log('Modal selected:', title);
     setShowModal(false);
@@ -43,10 +38,10 @@ export default function Home() {
       return <HawaiiForm />;
     }
     if (currentView === 'SPC') {
-      return <SPCForm />;
+      return <SPCForm isProduction={isProduction} />;
     }
     if (currentView === 'MASTER_BOND_SHEET') {
-      return <MasterBondSheet isProduction={false} />;
+      return <MasterBondSheet isProduction={isProduction} />;
     }
     if (selectedSection) {
       return (
@@ -82,6 +77,7 @@ export default function Home() {
           show={showModal} 
           onClose={() => setShowModal(false)}
           onSelect={handleModalSelect}
+          isProduction={isProduction}
         />
       </div>
     </div>

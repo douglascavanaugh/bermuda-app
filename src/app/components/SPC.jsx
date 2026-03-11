@@ -155,12 +155,12 @@ const parseNameLine = (nameLine) => {
   throw new Error('Invalid name format');
 };
 
-export default function SPCForm() {
+export default function SPCForm({ isProduction = false }) {
   const [formDataList, setFormDataList] = useState([]);
   const [currentForm, setCurrentForm] = useState(initialFormData);
   const [errors, setErrors] = useState(initialErrors);
   const [successMessage, setSuccessMessage] = useState('');
-  const [showStoredForms, setShowStoredForms] = useState(false);
+  const [showStoredForms, setShowStoredForms] = useState(true);  // Default to showing stored forms
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState({ current: 0, total: 0, errors: [] });
@@ -398,8 +398,104 @@ export default function SPCForm() {
     }
   };
 
-  // Process all entries into ONE combined PDF
-  const handleConfirmSubmit = async () => {
+  // PRODUCTION: Submit to Supabase with screenshots for server-side processing
+  const handleProductionSubmit = async () => {
+    setIsProcessingBatch(true);
+    setCurrentProcessingIndex(0);
+    setShowConfirmDialog(false);
+    setShouldCancel(false);
+    
+    try {
+      const entriesToProcess = [...formDataList];
+      const totalEntries = entriesToProcess.length;
+      const entriesWithScreenshots = [];
+      
+      setProcessStage('Capturing screenshots for server processing...');
+      
+      for (let i = 0; i < entriesToProcess.length; i++) {
+        if (shouldCancel) {
+          setSuccessMessage('Processing cancelled');
+          return;
+        }
+        
+        setCurrentProcessingIndex(i);
+        const formData = entriesToProcess[i];
+        
+        setProgress({
+          current: i + 1,
+          total: totalEntries,
+          errors: []
+        });
+        
+        // Scroll to the form entry
+        const formElement = document.getElementById(`form-entry-${formData.lastName}-${formData.firstName}`);
+        formElement?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // Capture form screenshot
+        setProcessStage(`Capturing form for ${formData.firstName} ${formData.lastName}...`);
+        const formScreenshot = await captureElement('root', true);
+        
+        // Capture confirmation screenshot
+        setProcessStage(`Capturing confirmation for ${formData.firstName} ${formData.lastName}...`);
+        setShowConfirmDialog(true);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        const confirmScreenshot = await captureElement('root', true);
+        setShowConfirmDialog(false);
+        
+        // Add entry with screenshots
+        entriesWithScreenshots.push({
+          ...formData,
+          screenshotForm: formScreenshot,
+          screenshotConfirmation: confirmScreenshot
+        });
+        
+        // Remove from UI
+        setFormDataList(prevList => 
+          prevList.filter(form => 
+            !(form.firstName === formData.firstName && 
+              form.lastName === formData.lastName && 
+              form.ssn === formData.ssn)
+          )
+        );
+        
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+      
+      // Submit all entries to Supabase
+      if (!shouldCancel) {
+        setProcessStage('Submitting to server for processing...');
+        
+        const response = await fetch('/api/submit-spc', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ entries: entriesWithScreenshots })
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+          setSuccessMessage(`✅ ${totalEntries} SPC form(s) submitted! Gary will receive them via email once processed.`);
+          setCurrentForm(initialFormData);
+        } else {
+          throw new Error(result.error || 'Failed to submit');
+        }
+      }
+      
+    } catch (error) {
+      console.error('Error submitting forms:', error);
+      setSuccessMessage(`Error: ${error.message}`);
+    } finally {
+      setIsProcessingBatch(false);
+      setCurrentProcessingIndex(-1);
+      setShouldCancel(false);
+      setProcessStage('');
+      setTimeout(() => setSuccessMessage(''), 8000);
+    }
+  };
+
+  // DEVELOPMENT: Process all entries into ONE combined PDF (download locally)
+  const handleDevSubmit = async () => {
     setIsProcessingBatch(true);
     setCurrentProcessingIndex(0);
     setShowConfirmDialog(false);
@@ -407,10 +503,7 @@ export default function SPCForm() {
     setIsPaused(false);
     
     try {
-      // Create ONE PDF document for all entries
       const doc = new jsPDF();
-      
-      // Take a snapshot of the list to iterate (since we'll be removing items)
       const entriesToProcess = [...formDataList];
       const totalEntries = entriesToProcess.length;
       
@@ -422,7 +515,6 @@ export default function SPCForm() {
           return;
         }
   
-        // Check for pause
         while (isPaused && !shouldCancel) {
           await new Promise(resolve => setTimeout(resolve, 100));
         }
@@ -441,11 +533,9 @@ export default function SPCForm() {
   
         await new Promise(resolve => setTimeout(resolve, 300));
         
-        // Add this person's 3 pages to the combined document
         const isFirst = (i === 0);
         await addPersonToDoc(doc, formData, isFirst, i + 1, totalEntries);
         
-        // Remove the processed person's card from the UI immediately
         setFormDataList(prevList => 
           prevList.filter(form => 
             !(form.firstName === formData.firstName && 
@@ -457,7 +547,6 @@ export default function SPCForm() {
         await new Promise(resolve => setTimeout(resolve, 300));
       }
   
-      // Save the combined PDF once at the end
       if (!shouldCancel) {
         setProcessStage('Saving combined PDF...');
         const timestamp = new Date().toISOString().split('T')[0];
@@ -475,7 +564,6 @@ export default function SPCForm() {
           setSuccessMessage(`✅ Combined PDF created with ${totalEntries} entries (${totalEntries * 3} pages)!`);
           setTimeout(() => setSuccessMessage(''), 5000);
           setCurrentForm(initialFormData);
-          // List is already empty from removing items one-by-one
         } catch (saveError) {
           console.error('Error saving PDF:', saveError);
           setSuccessMessage(`Error saving PDF - file may be too large. Try fewer entries.`);
@@ -491,6 +579,15 @@ export default function SPCForm() {
       setShouldCancel(false);
       setIsPaused(false);
       setProcessStage('');
+    }
+  };
+
+  // Route to appropriate handler based on environment
+  const handleConfirmSubmit = async () => {
+    if (isProduction) {
+      await handleProductionSubmit();
+    } else {
+      await handleDevSubmit();
     }
   };
 

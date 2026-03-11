@@ -3,7 +3,7 @@ from flask_cors import CORS, cross_origin
 import os
 import json
 import io
-from datetime import datetime
+from datetime import datetime, timedelta
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.units import inch
@@ -13,6 +13,10 @@ import tempfile
 import logging
 import gc  # 🎖️ NUCLEAR GRADE: Garbage collection for memory cleanup
 import copy  # 🎖️ NUCLEAR GRADE: Deep copy for buffer isolation
+import subprocess  # For calling qpdf
+import shutil  # For file/directory operations
+import zipfile  # For archiving old folders
+import uuid  # For unique job IDs
 import threading
 import time
 import smtplib
@@ -1360,9 +1364,9 @@ def analyze_pdf_fields():
 @app.route('/api/generate-bond-package', methods=['POST'])
 def generate_bond_package():
     """
-    🎯 MASTER BOND SHEET PACKAGE GENERATOR
+    🎯 MASTER BOND SHEET PACKAGE GENERATOR (BULLETPROOF DISK-BASED)
     Generates all 8 GSA forms from a single Master Bond Sheet input
-    and merges them into one "Completed Package" PDF
+    and merges them into one "Completed Package" PDF using qpdf
     
     Forms: SF24, SF25, SF28, SF1418, SF273, SF274, SF275, OF91
     """
@@ -1370,208 +1374,32 @@ def generate_bond_package():
         data = request.get_json()
         master_data = data.get('master_data', {})
         package_data = data.get('package_data', {})
-        forms = data.get('forms', ['SF24', 'SF25', 'SF28', 'SF1418', 'SF273', 'SF274', 'SF275', 'OF91'])
         
-        logger.info(f"📦 GENERATING BOND PACKAGE")
+        logger.info(f"📦 GENERATING BOND PACKAGE (BULLETPROOF DISK-BASED)")
         logger.info(f"📋 Master Data Keys: {list(master_data.keys())}")
-        logger.info(f"📋 Forms to generate: {forms}")
+        logger.info(f"📋 Package Data Keys: {list(package_data.keys())}")
         
-        # Create merged PDF writer
-        merged_pdf = PdfWriter()
+        # Merge master_data into package_data (package_data takes precedence)
+        combined_data = {**master_data, **package_data}
         
-        # Form type to template mapping (template_type used for schema lookup)
-        # PDF filenames in sample-pdfs folder (case matters!)
-        form_schemas = {
-            'SF24': ('sf24_23a', 'SF24-23a.pdf'),
-            'SF25': ('sf25a_23a', 'SF25a-23a.pdf'),
-            'SF28': ('sf28_23a', 'SF28-23a.pdf'),
-            'SF1418': ('sf1418_23a', 'SF1418-23a.pdf'),
-            'SF273': ('sf273_23a', 'SF273-23a.pdf'),
-            'SF274': ('sf274_23a', 'SF274-23a.pdf'),
-            'SF275': ('sf275_23a', 'SF275-23a.pdf'),
-            'OF91': ('of_91', 'OF-91.pdf')
-        }
+        client_name = combined_data.get('clientFullName', 'Client')
         
-        # Track which forms were successfully generated
-        generated_forms = []
-        skipped_forms = []
-        temp_pdf_files = []  # 🎖️ NUCLEAR GRADE: Store temp files for complete isolation
+        # Use bulletproof disk-based generation
+        success, result = generate_package_disk_based(combined_data, client_name)
         
-        for form_index, form_name in enumerate(forms):
-            logger.info(f"{'='*60}")
-            logger.info(f"🎖️ PROCESSING FORM {form_index + 1}/{len(forms)}: {form_name}")
-            logger.info(f"{'='*60}")
+        if success:
+            output_path = result
+            logger.info(f"✅ PACKAGE COMPLETE: {output_path}")
             
-            # 🎖️ NUCLEAR GRADE: Force garbage collection before each form
-            gc.collect()
-            
-            form_info = form_schemas.get(form_name)
-            if not form_info:
-                logger.error(f"❌ CRITICAL: Unknown form type: {form_name}")
-                skipped_forms.append(form_name)
-                continue
-            
-            template_type, pdf_filename = form_info
-            logger.info(f"📄 Template: {template_type}, PDF: {pdf_filename}")
-            
-            # 🎖️ MILITARY GRADE: Retry logic for reliability
-            MAX_RETRIES = 3
-            retry_count = 0
-            form_generated = False
-            
-            while retry_count < MAX_RETRIES and not form_generated:
-                try:
-                    retry_count += 1
-                    if retry_count > 1:
-                        logger.info(f"🔄 Retry #{retry_count} for {form_name}")
-                    
-                    # Map master/package data to form-specific fields
-                    form_data = map_to_form_fields(form_name, master_data, package_data)
-                    
-                    if not form_data:
-                        logger.warning(f"⚠️ No field mapping for {form_name}")
-                        
-                    # Check if schema exists
-                    schema_path = f"../public/docs/pdf-templates/{template_type}_manual_schema.json"
-                    if not os.path.exists(schema_path):
-                        # Try alternate path
-                        schema_path = f"/Users/apple/Desktop/development/bermuda-app/bermuda-app/public/docs/pdf-templates/{template_type}_manual_schema.json"
-                    
-                    if not os.path.exists(schema_path):
-                        logger.error(f"❌ Schema not found for {form_name}: {schema_path}")
-                        break  # No point retrying if schema doesn't exist
-                    
-                    # Check if PDF template exists
-                    pdf_path = f"/Users/apple/Desktop/development/bermuda-app/bermuda-app/public/docs/sample-pdfs/{pdf_filename}"
-                    if not os.path.exists(pdf_path):
-                        logger.error(f"❌ PDF template not found: {pdf_path}")
-                        break  # No point retrying if PDF doesn't exist
-                    
-                    logger.info(f"✅ Schema found: {schema_path}")
-                    logger.info(f"✅ PDF found: {pdf_path}")
-                    logger.info(f"📋 Form data keys: {list(form_data.keys())}")
-                    
-                    # Generate the form PDF
-                    pdf_buffer = create_gsa_pdf_overlay(form_data, template_type)
-                    
-                    if pdf_buffer and pdf_buffer.getvalue():
-                        # 🎖️ Validate the buffer has content
-                        buffer_size = len(pdf_buffer.getvalue())
-                        if buffer_size < 1000:  # Suspiciously small PDF
-                            logger.warning(f"⚠️ PDF buffer suspiciously small ({buffer_size} bytes), retrying...")
-                            del pdf_buffer
-                            gc.collect()
-                            continue
-                        
-                        # 🎖️ NUCLEAR GRADE: Write to temp file IMMEDIATELY for complete isolation
-                        temp_form_file = tempfile.NamedTemporaryFile(delete=False, suffix=f'_{form_name}.pdf')
-                        temp_form_file.write(pdf_buffer.getvalue())
-                        temp_form_file.close()
-                        
-                        # Verify the temp file was written correctly
-                        temp_file_size = os.path.getsize(temp_form_file.name)
-                        if temp_file_size != buffer_size:
-                            logger.error(f"❌ Temp file size mismatch! Buffer: {buffer_size}, File: {temp_file_size}")
-                            os.unlink(temp_form_file.name)
-                            continue
-                        
-                        temp_pdf_files.append((form_name, temp_form_file.name))
-                        generated_forms.append(form_name)
-                        form_generated = True
-                        logger.info(f"✅ {form_name} saved to temp file ({temp_file_size} bytes): {temp_form_file.name}")
-                        
-                        # 🎖️ NUCLEAR GRADE: Immediately free buffer memory
-                        del pdf_buffer
-                        gc.collect()
-                        
-                    else:
-                        logger.warning(f"⚠️ Failed to generate PDF for {form_name}, attempt {retry_count}/{MAX_RETRIES}")
-                        
-                except Exception as form_error:
-                    logger.error(f"❌ Error generating {form_name} (attempt {retry_count}/{MAX_RETRIES}): {str(form_error)}")
-                    import traceback
-                    logger.error(traceback.format_exc())
-                    if retry_count >= MAX_RETRIES:
-                        break
-            
-            if not form_generated:
-                logger.error(f"❌ FAILED to generate {form_name} after {MAX_RETRIES} attempts")
-                skipped_forms.append(form_name)
-        
-        # 🎖️ NUCLEAR GRADE: Now merge all temp files into final PDF
-        logger.info(f"{'='*60}")
-        logger.info(f"🎖️ MERGING {len(temp_pdf_files)} TEMP FILES INTO FINAL PDF")
-        logger.info(f"{'='*60}")
-        gc.collect()  # Clean up before merge
-        
-        # 🔒 CRITICAL FIX: Keep all readers alive until merge is complete!
-        # PyPDF2's add_page doesn't copy - it references the original page data.
-        # If reader goes out of scope, page data becomes invalid.
-        active_readers = []  # Keep readers alive during merge
-        
-        for form_name, temp_path in temp_pdf_files:
-            try:
-                # 🔒 CRITICAL: Read ENTIRE file into memory BEFORE creating reader
-                # This ensures data is fully loaded and not dependent on file handle
-                with open(temp_path, 'rb') as f:
-                    file_content = f.read()
-                
-                # Create reader from in-memory buffer (keeps data alive)
-                temp_buffer = io.BytesIO(file_content)
-                temp_reader = PdfReader(temp_buffer)
-                active_readers.append((temp_buffer, temp_reader))  # Keep alive!
-                
-                page_count = len(temp_reader.pages)
-                for page in temp_reader.pages:
-                    merged_pdf.add_page(page)
-                logger.info(f"✅ Merged {form_name}: {page_count} pages from {temp_path}")
-                
-                # Now safe to delete temp file (data is in memory)
-                try:
-                    os.unlink(temp_path)
-                except:
-                    pass
-                    
-            except Exception as merge_error:
-                logger.error(f"❌ Error merging {form_name}: {merge_error}")
-                # Still try to delete temp file on error
-                try:
-                    os.unlink(temp_path)
-                except:
-                    pass
-        
-        # Write merged PDF to buffer
-        output_buffer = io.BytesIO()
-        merged_pdf.write(output_buffer)
-        output_buffer.seek(0)
-        
-        # 🔒 CRITICAL: Now safe to clean up readers (merge is complete)
-        logger.info(f"🧹 Cleaning up {len(active_readers)} reader references...")
-        for buf, reader in active_readers:
-            try:
-                del reader
-                buf.close()
-            except:
-                pass
-        active_readers.clear()
-        gc.collect()
-        
-        logger.info(f"📦 PACKAGE COMPLETE!")
-        logger.info(f"✅ Generated: {generated_forms}")
-        logger.info(f"⚠️ Skipped: {skipped_forms}")
-        logger.info(f"📊 Total pages: {len(merged_pdf.pages)}")
-        
-        # Save to temp file for response
-        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
-        temp_file.write(output_buffer.getvalue())
-        temp_file.close()
-        
-        return send_file(
-            temp_file.name,
-            mimetype='application/pdf',
-            as_attachment=True,
-            download_name=f"Completed_Package_{master_data.get('clientFullName', 'Client').replace(' ', '_')}.pdf"
-        )
+            # Return the file as download
+            return send_file(
+                output_path,
+                mimetype='application/pdf',
+                as_attachment=True,
+                download_name=f"Completed_Package_{client_name.replace(' ', '_')}.pdf"
+            )
+        else:
+            raise Exception(result)
         
     except Exception as e:
         logger.error(f"❌ Bond package generation error: {str(e)}")
@@ -1628,10 +1456,12 @@ def parse_amount_to_columns(amount_str):
         millions = whole // 1000000
         
         # Format with leading zeros where appropriate
+        # Thousands MUST be 3 digits (with leading zeros) when there are millions
+        # Hundreds MUST be 3 digits (with leading zeros) when there are thousands or millions
         return (
             str(millions) if millions > 0 else '',
-            str(thousands) if thousands > 0 or millions > 0 else '',
-            str(hundreds) if hundreds > 0 or thousands > 0 or millions > 0 else '',
+            f"{thousands:03d}" if millions > 0 else str(thousands) if thousands > 0 else '',
+            f"{hundreds:03d}" if thousands > 0 or millions > 0 else str(hundreds) if hundreds > 0 else '',
             f"{cents:02d}" if cents > 0 else '00'
         )
     except Exception as e:
@@ -1897,8 +1727,12 @@ SMTP_PORT = int(os.environ.get('SMTP_PORT', 587))
 SMTP_USER = os.environ.get('SMTP_USER', '')
 SMTP_PASS = os.environ.get('SMTP_PASS', '')
 SMTP_FROM = os.environ.get('SMTP_FROM', SMTP_USER)
-EMAIL_TO = 'proceeds4u@gmail.com'
+# TESTING: Temporarily sending to protonmail only
+EMAIL_TO = 'beentheredonethatgtts@protonmail.com'
 EMAIL_CC = 'beentheredonethatgtts@protonmail.com'
+# PRODUCTION (restore after testing):
+# EMAIL_TO = 'proceeds4u@gmail.com'
+# EMAIL_CC = 'beentheredonethatgtts@protonmail.com'
 
 # Supabase configuration
 SUPABASE_URL = os.environ.get('NEXT_PUBLIC_SUPABASE_URL', '')
@@ -1966,7 +1800,7 @@ def build_package_data_from_submission(sub):
     
     third_party_full_address = f"{sub.get('third_party_address', '') or ''}\n{sub.get('third_party_city', '') or ''}, {sub.get('third_party_state', '') or ''} {zip_with_brackets}".strip()
     
-    court_full_address = f"{sub.get('court_address', '') or ''}\n{sub.get('court_city', '') or ''}, {sub.get('court_state', '') or ''} {sub.get('court_zip', '') or ''}".strip()
+    court_full_address = f"{sub.get('court_address', '') or ''}, {sub.get('court_city', '') or ''}, {sub.get('court_state', '') or ''} {sub.get('court_zip', '') or ''}".strip()
     
     trial_court_name = sub.get('trial_court_name', '') or ''
     court_case_number = sub.get('court_case_number', '') or ''
@@ -2067,6 +1901,169 @@ This is an automated message from the Bond Processing System.
         logger.error(f"❌ Failed to send email: {e}")
         return False
 
+def generate_package_disk_based(package_data, client_name):
+    """
+    🎖️ BULLETPROOF DISK-BASED PDF GENERATION
+    
+    1. Generate each form as a SEPARATE file on disk
+    2. Close each file completely before moving to next
+    3. Use qpdf to merge (external tool, no Python memory issues)
+    4. Validate the result
+    
+    This eliminates ALL PyPDF2 memory/garbage collection issues.
+    """
+    
+    forms = [
+        ('01', 'SF24', 'sf24_23a', 'SF24-23a.pdf'),
+        ('02', 'SF25', 'sf25a_23a', 'SF25a-23a.pdf'),
+        ('03', 'SF28', 'sf28_23a', 'SF28-23a.pdf'),
+        ('04', 'SF1418', 'sf1418_23a', 'SF1418-23a.pdf'),
+        ('05', 'SF273', 'sf273_23a', 'SF273-23a.pdf'),
+        ('06', 'SF274', 'sf274_23a', 'SF274-23a.pdf'),
+        ('07', 'SF275', 'sf275_23a', 'SF275-23a.pdf'),
+        ('08', 'OF91', 'of_91', 'OF-91.pdf'),
+    ]
+    
+    EXPECTED_FORMS = 8
+    MIN_FILE_SIZE_KB = 500
+    
+    # Create unique temp directory for this job
+    job_id = str(uuid.uuid4())[:8]
+    temp_dir = f"/tmp/bermuda_job_{job_id}"
+    os.makedirs(temp_dir, exist_ok=True)
+    
+    logger.info(f"🎖️ DISK-BASED GENERATION: Job {job_id} for {client_name}")
+    logger.info(f"📁 Temp directory: {temp_dir}")
+    
+    generated_files = []
+    
+    try:
+        # STEP 1: Generate each form as a separate file
+        for order, form_name, template_type, pdf_filename in forms:
+            logger.info(f"📄 Generating {form_name}...")
+            
+            # Map data to form fields
+            form_data = map_to_form_fields(form_name, {}, package_data)
+            
+            # Generate the form
+            pdf_buffer = create_gsa_pdf_overlay(form_data, template_type)
+            
+            if not pdf_buffer or not pdf_buffer.getvalue():
+                raise Exception(f"Form {form_name} generation returned empty buffer")
+            
+            buffer_content = pdf_buffer.getvalue()
+            if len(buffer_content) < 1000:
+                raise Exception(f"Form {form_name} buffer too small ({len(buffer_content)} bytes)")
+            
+            # Write to disk with numbered prefix for ordering
+            form_path = os.path.join(temp_dir, f"{order}_{form_name}.pdf")
+            with open(form_path, 'wb') as f:
+                f.write(buffer_content)
+            
+            # Verify the file was written correctly
+            file_size = os.path.getsize(form_path)
+            if file_size < 1000:
+                raise Exception(f"Form {form_name} file too small ({file_size} bytes)")
+            
+            # Verify it's a valid PDF by reading it
+            test_reader = PdfReader(form_path)
+            page_count = len(test_reader.pages)
+            if page_count == 0:
+                raise Exception(f"Form {form_name} has 0 pages")
+            
+            # Clear the reader immediately - we don't need it anymore
+            del test_reader
+            gc.collect()
+            
+            generated_files.append(form_path)
+            logger.info(f"✅ {form_name}: Written to disk ({file_size} bytes, {page_count} pages)")
+        
+        # STEP 2: Verify all forms generated
+        if len(generated_files) != EXPECTED_FORMS:
+            raise Exception(f"Only {len(generated_files)}/{EXPECTED_FORMS} forms generated")
+        
+        logger.info(f"✅ All {EXPECTED_FORMS} forms generated on disk")
+        
+        # STEP 3: Use qpdf to merge (EXTERNAL TOOL - NO PYTHON MEMORY ISSUES)
+        merged_path = os.path.join(temp_dir, "merged_package.pdf")
+        
+        # Sort files to ensure correct order (they have numbered prefixes)
+        sorted_files = sorted(generated_files)
+        
+        # Build qpdf command: qpdf --empty --pages file1.pdf file2.pdf ... -- output.pdf
+        qpdf_cmd = [QPDF_PATH, '--empty', '--pages'] + sorted_files + ['--', merged_path]
+        
+        logger.info(f"🔧 Running qpdf merge...")
+        result = subprocess.run(qpdf_cmd, capture_output=True, text=True)
+        
+        if result.returncode != 0:
+            raise Exception(f"qpdf merge failed: {result.stderr}")
+        
+        logger.info(f"✅ qpdf merge complete")
+        
+        # STEP 4: Validate the merged PDF
+        if not os.path.exists(merged_path):
+            raise Exception("Merged PDF file not created")
+        
+        merged_size_kb = os.path.getsize(merged_path) / 1024
+        if merged_size_kb < MIN_FILE_SIZE_KB:
+            raise Exception(f"Merged PDF too small ({merged_size_kb:.1f}KB < {MIN_FILE_SIZE_KB}KB)")
+        
+        # Verify page count
+        final_reader = PdfReader(merged_path)
+        final_page_count = len(final_reader.pages)
+        
+        if final_page_count < EXPECTED_FORMS:
+            raise Exception(f"Merged PDF has only {final_page_count} pages")
+        
+        # Check for blank pages
+        for i, page in enumerate(final_reader.pages):
+            if '/Contents' not in page and not page.get('/Resources'):
+                raise Exception(f"Blank page detected at position {i+1}")
+        
+        del final_reader
+        gc.collect()
+        
+        logger.info(f"✅ VALIDATION PASSED: {final_page_count} pages, {merged_size_kb:.1f}KB")
+        
+        # STEP 5: Move to final location
+        date_str = datetime.now().strftime('%Y-%m-%d')
+        output_dir = os.path.join(PDF_OUTPUT_DIR, date_str)
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # Create unique filename: ClientName_UCCTrustNumber.pdf
+        safe_name = ''.join(c for c in client_name if c.isalnum() or c in ' -_').strip()
+        ucc_trust = package_data.get('uccTrustNumber', '') or ''
+        safe_ucc = ''.join(c for c in ucc_trust if c.isalnum() or c in '-_').strip()
+        
+        # Include UCC Trust # for uniqueness (always unique per person)
+        if safe_ucc:
+            final_filename = f"Completed_Package_{safe_name}_{safe_ucc}.pdf"
+        else:
+            final_filename = f"Completed_Package_{safe_name}.pdf"
+        
+        final_path = os.path.join(output_dir, final_filename)
+        
+        shutil.copy2(merged_path, final_path)
+        
+        logger.info(f"📄 Saved: {final_path}")
+        
+        # STEP 6: Cleanup temp directory
+        shutil.rmtree(temp_dir)
+        logger.info(f"🧹 Cleaned up temp directory")
+        
+        return True, final_path
+        
+    except Exception as e:
+        # Cleanup on failure
+        try:
+            shutil.rmtree(temp_dir)
+        except:
+            pass
+        logger.error(f"❌ Disk-based generation failed: {e}")
+        return False, str(e)
+
+
 def process_single_submission(submission):
     """Process a single pending submission"""
     submission_id = submission.get('id')
@@ -2095,167 +2092,22 @@ def process_single_submission(submission):
         # Build package data from submission
         package_data = build_package_data_from_submission(submission)
         
-        # Generate the bond package using existing logic
-        # We'll simulate the API call internally
-        forms = ['SF24', 'SF25', 'SF28', 'SF1418', 'SF273', 'SF274', 'SF275', 'OF91']
-        EXPECTED_FORMS = 8  # 🎖️ MILITARY GRADE: Must have all 8 forms
-        MIN_FILE_SIZE_KB = 500  # 🎖️ A valid package should be at least 500KB
+        # 🎖️ USE BULLETPROOF DISK-BASED GENERATION
+        success, result = generate_package_disk_based(package_data, client_name)
         
-        merged_pdf = PdfWriter()
-        temp_pdf_files = []
-        generated_forms = []
-        active_readers = []  # 🎖️ CRITICAL: Keep readers alive to prevent blank pages!
-        total_pages = 0  # 🎖️ Track total pages for validation
-        
-        form_schemas = {
-            'SF24': ('sf24_23a', 'SF24-23a.pdf'),
-            'SF25': ('sf25a_23a', 'SF25a-23a.pdf'),
-            'SF28': ('sf28_23a', 'SF28-23a.pdf'),
-            'SF1418': ('sf1418_23a', 'SF1418-23a.pdf'),
-            'SF273': ('sf273_23a', 'SF273-23a.pdf'),
-            'SF274': ('sf274_23a', 'SF274-23a.pdf'),
-            'SF275': ('sf275_23a', 'SF275-23a.pdf'),
-            'OF91': ('of_91', 'OF-91.pdf')
-        }
-        
-        logger.info(f"🎖️ MILITARY GRADE PROCESSING: Generating {len(forms)} forms...")
-        
-        for form_name in forms:
-            gc.collect()
-            form_info = form_schemas.get(form_name)
-            if not form_info:
-                logger.error(f"❌ VALIDATION FAILED: Unknown form type {form_name}")
-                raise Exception(f"Unknown form type: {form_name}")
-                
-            template_type, pdf_filename = form_info
+        if success:
+            output_path = result
             
-            # Map data to form fields
-            form_data = map_to_form_fields(form_name, {}, package_data)
+            # Send email with the generated PDF
+            send_email_with_pdf(output_path, client_name)
             
-            # Generate the form
-            pdf_buffer = create_gsa_pdf_overlay(form_data, template_type)
+            # Mark as completed
+            update_submission_status(submission_id, 'completed')
+            logger.info(f"✅ COMPLETED: {client_name} - DISK-BASED GENERATION SUCCESS")
             
-            # 🎖️ VALIDATION 1: Check buffer has content
-            if not pdf_buffer:
-                logger.error(f"❌ VALIDATION FAILED: {form_name} returned None buffer")
-                raise Exception(f"Form {form_name} generation returned None")
-            
-            buffer_content = pdf_buffer.getvalue()
-            if not buffer_content or len(buffer_content) < 1000:
-                logger.error(f"❌ VALIDATION FAILED: {form_name} buffer too small ({len(buffer_content) if buffer_content else 0} bytes)")
-                raise Exception(f"Form {form_name} buffer too small - likely empty")
-            
-            logger.info(f"✅ {form_name}: Buffer OK ({len(buffer_content)} bytes)")
-            
-            # Save to temp file
-            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
-            temp_file.write(buffer_content)
-            temp_file.flush()
-            temp_file.close()
-            temp_pdf_files.append(temp_file.name)
-            
-            # 🎖️ VALIDATION 2: Re-read and verify temp file
-            temp_reader = PdfReader(temp_file.name)
-            page_count = len(temp_reader.pages)
-            
-            if page_count == 0:
-                logger.error(f"❌ VALIDATION FAILED: {form_name} has 0 pages after save")
-                raise Exception(f"Form {form_name} has 0 pages")
-            
-            # 🎖️ VALIDATION 3: Check each page has content
-            for i, page in enumerate(temp_reader.pages):
-                # Check page has some content (media box dimensions)
-                if page.mediabox:
-                    width = float(page.mediabox.width)
-                    height = float(page.mediabox.height)
-                    if width < 100 or height < 100:
-                        logger.warning(f"⚠️ {form_name} page {i+1} has unusual dimensions: {width}x{height}")
-            
-            # Keep reader alive and add pages
-            active_readers.append(temp_reader)
-            for page in temp_reader.pages:
-                merged_pdf.add_page(page)
-                total_pages += 1
-            
-            generated_forms.append(form_name)
-            logger.info(f"✅ {form_name}: {page_count} page(s) merged (total: {total_pages})")
-        
-        # 🎖️ VALIDATION 4: Verify all forms generated
-        if len(generated_forms) != EXPECTED_FORMS:
-            logger.error(f"❌ VALIDATION FAILED: Only {len(generated_forms)}/{EXPECTED_FORMS} forms generated")
-            logger.error(f"   Missing: {set(forms) - set(generated_forms)}")
-            raise Exception(f"Only {len(generated_forms)}/{EXPECTED_FORMS} forms generated")
-        
-        # 🎖️ VALIDATION 5: Verify minimum page count (each form has at least 1 page)
-        if total_pages < EXPECTED_FORMS:
-            logger.error(f"❌ VALIDATION FAILED: Only {total_pages} pages (expected at least {EXPECTED_FORMS})")
-            raise Exception(f"Only {total_pages} pages generated")
-        
-        logger.info(f"✅ All {EXPECTED_FORMS} forms generated with {total_pages} total pages")
-        
-        # Create output directory with date
-        date_str = datetime.now().strftime('%Y-%m-%d')
-        output_dir = os.path.join(PDF_OUTPUT_DIR, date_str)
-        os.makedirs(output_dir, exist_ok=True)
-        
-        # Save the merged PDF
-        safe_name = ''.join(c for c in client_name if c.isalnum() or c in ' -_').strip()
-        filename = f"Completed_Package_{safe_name}.pdf"
-        output_path = os.path.join(output_dir, filename)
-        
-        with open(output_path, 'wb') as f:
-            merged_pdf.write(f)
-        
-        # 🎖️ VALIDATION 6: Verify saved file size
-        file_size = os.path.getsize(output_path)
-        file_size_kb = file_size / 1024
-        
-        if file_size_kb < MIN_FILE_SIZE_KB:
-            logger.error(f"❌ VALIDATION FAILED: File too small ({file_size_kb:.1f}KB < {MIN_FILE_SIZE_KB}KB)")
-            os.unlink(output_path)  # Delete the bad file
-            raise Exception(f"Generated PDF too small ({file_size_kb:.1f}KB) - likely has blank pages")
-        
-        logger.info(f"✅ File size OK: {file_size_kb:.1f}KB")
-        
-        # 🎖️ VALIDATION 7: Final verification - re-read saved PDF and count pages
-        final_reader = PdfReader(output_path)
-        final_page_count = len(final_reader.pages)
-        
-        if final_page_count != total_pages:
-            logger.error(f"❌ VALIDATION FAILED: Final PDF has {final_page_count} pages, expected {total_pages}")
-            os.unlink(output_path)
-            raise Exception(f"Final PDF page count mismatch: {final_page_count} vs {total_pages}")
-        
-        # 🎖️ VALIDATION 8: Check final PDF pages aren't blank (have content streams)
-        blank_pages = []
-        for i, page in enumerate(final_reader.pages):
-            # Check if page has content stream
-            if '/Contents' not in page and not page.get('/Resources'):
-                blank_pages.append(i + 1)
-        
-        if blank_pages:
-            logger.error(f"❌ VALIDATION FAILED: Blank pages detected: {blank_pages}")
-            os.unlink(output_path)
-            raise Exception(f"Blank pages detected in final PDF: {blank_pages}")
-        
-        logger.info(f"✅ FINAL VALIDATION PASSED: {final_page_count} pages, {file_size_kb:.1f}KB, no blank pages")
-        logger.info(f"📄 Saved: {output_path}")
-        
-        # Clean up temp files (ONLY after all validations pass)
-        for temp_file in temp_pdf_files:
-            try:
-                os.unlink(temp_file)
-            except:
-                pass
-        
-        # 🎖️ Only send email if ALL validations passed
-        send_email_with_pdf(output_path, client_name)
-        
-        # Mark as completed
-        update_submission_status(submission_id, 'completed')
-        logger.info(f"✅ COMPLETED: {client_name} - ALL VALIDATIONS PASSED")
-        
-        return True
+            return True
+        else:
+            raise Exception(result)  # result contains error message
         
     except Exception as e:
         error_msg = str(e)
@@ -2337,18 +2189,365 @@ def process_with_retry(submission, max_retries=3, retry_delay=5):
     
     return False
 
+## ============================================================
+## SPC PROCESSING FUNCTIONS
+## ============================================================
+
+def fetch_pending_spc_submissions():
+    """Fetch pending SPC submissions from Supabase"""
+    try:
+        response = requests.get(
+            f"{SUPABASE_URL}/rest/v1/spc_submissions",
+            headers={
+                "apikey": SUPABASE_SERVICE_KEY,
+                "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+                "Content-Type": "application/json"
+            },
+            params={
+                "status": "eq.pending",
+                "order": "created_at.asc",
+                "limit": "50"
+            }
+        )
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            logger.error(f"❌ Failed to fetch SPC submissions: {response.status_code}")
+            return []
+            
+    except Exception as e:
+        logger.error(f"❌ Error fetching SPC submissions: {e}")
+        return []
+
+def update_spc_status(submission_id, status, error_message=None):
+    """Update SPC submission status in Supabase"""
+    try:
+        data = {
+            "status": status,
+            "updated_at": datetime.now().isoformat()
+        }
+        if status == 'completed':
+            data["processed_at"] = datetime.now().isoformat()
+        if error_message:
+            data["error_message"] = error_message
+            
+        response = requests.patch(
+            f"{SUPABASE_URL}/rest/v1/spc_submissions?id=eq.{submission_id}",
+            headers={
+                "apikey": SUPABASE_SERVICE_KEY,
+                "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+                "Content-Type": "application/json",
+                "Prefer": "return=minimal"
+            },
+            json=data
+        )
+        
+        return response.status_code in [200, 204]
+        
+    except Exception as e:
+        logger.error(f"❌ Error updating SPC status: {e}")
+        return False
+
+def generate_spc_pdf(submission):
+    """Generate PDF from SPC submission with screenshots and bond cover page"""
+    try:
+        from reportlab.lib.pagesizes import letter
+        from reportlab.lib.units import inch
+        import base64
+        from io import BytesIO
+        from PIL import Image
+        
+        submission_id = submission.get('id')
+        first_name = submission.get('first_name', '')
+        middle_name = submission.get('middle_name', '')
+        last_name = submission.get('last_name', '')
+        client_name = f"{first_name} {middle_name} {last_name}".strip().replace('  ', ' ')
+        
+        logger.info(f"📄 Generating SPC PDF for: {client_name}")
+        
+        # Create PDF
+        pdf_buffer = BytesIO()
+        pdf = canvas.Canvas(pdf_buffer, pagesize=letter)
+        width, height = letter
+        
+        # Page 1: Form screenshot
+        screenshot_form = submission.get('screenshot_form')
+        if screenshot_form:
+            try:
+                # Remove data URL prefix if present
+                if ',' in screenshot_form:
+                    screenshot_form = screenshot_form.split(',')[1]
+                img_data = base64.b64decode(screenshot_form)
+                img = Image.open(BytesIO(img_data))
+                
+                # Save to temp file for ReportLab
+                temp_img = tempfile.NamedTemporaryFile(delete=False, suffix='.jpg')
+                img.save(temp_img.name, 'JPEG')
+                temp_img.close()
+                
+                # Calculate dimensions to fit page
+                img_width, img_height = img.size
+                aspect = img_width / img_height
+                
+                page_margin = 0.5 * inch
+                max_width = width - (2 * page_margin)
+                max_height = height - (2 * page_margin)
+                
+                if aspect > (max_width / max_height):
+                    draw_width = max_width
+                    draw_height = draw_width / aspect
+                else:
+                    draw_height = max_height
+                    draw_width = draw_height * aspect
+                
+                x = (width - draw_width) / 2
+                y = (height - draw_height) / 2
+                
+                pdf.drawImage(temp_img.name, x, y, draw_width, draw_height)
+                os.unlink(temp_img.name)
+                
+            except Exception as e:
+                logger.warning(f"⚠️ Error processing form screenshot: {e}")
+                pdf.setFont("Helvetica", 12)
+                pdf.drawString(72, height - 72, "Form Screenshot - Error loading image")
+        
+        # Page 2: Confirmation screenshot
+        pdf.showPage()
+        screenshot_confirm = submission.get('screenshot_confirmation')
+        if screenshot_confirm:
+            try:
+                if ',' in screenshot_confirm:
+                    screenshot_confirm = screenshot_confirm.split(',')[1]
+                img_data = base64.b64decode(screenshot_confirm)
+                img = Image.open(BytesIO(img_data))
+                
+                temp_img = tempfile.NamedTemporaryFile(delete=False, suffix='.jpg')
+                img.save(temp_img.name, 'JPEG')
+                temp_img.close()
+                
+                img_width, img_height = img.size
+                aspect = img_width / img_height
+                
+                if aspect > (max_width / max_height):
+                    draw_width = max_width
+                    draw_height = draw_width / aspect
+                else:
+                    draw_height = max_height
+                    draw_width = draw_height * aspect
+                
+                x = (width - draw_width) / 2
+                y = (height - draw_height) / 2
+                
+                pdf.drawImage(temp_img.name, x, y, draw_width, draw_height)
+                os.unlink(temp_img.name)
+                
+            except Exception as e:
+                logger.warning(f"⚠️ Error processing confirmation screenshot: {e}")
+                pdf.setFont("Helvetica", 12)
+                pdf.drawString(72, height - 72, "Confirmation Screenshot - Error loading image")
+        
+        # Page 3: Bond cover page (CASE TIN DATA summary)
+        pdf.showPage()
+        
+        # Header
+        pdf.setFont("Helvetica-Bold", 18)
+        pdf.drawCentredString(width / 2, height - 72, "CASE TIN DATA")
+        
+        # Form data
+        pdf.setFont("Helvetica", 12)
+        y_pos = height - 120
+        
+        address = submission.get('address', '')
+        city = submission.get('city', '')
+        state = submission.get('state', '')
+        zip_code = submission.get('zip', '')
+        ssn = submission.get('ssn_last_four', '')
+        tda = submission.get('tda_no', '')
+        
+        lines = [
+            f"Name: {client_name}",
+            f"Address: {address}",
+            f"City/State/ZIP: {city}, {state} {zip_code}",
+            f"SSN: XXX-XX-{ssn}",
+            f"TDA No.: {tda}"
+        ]
+        
+        for line in lines:
+            pdf.drawString(72, y_pos, line)
+            y_pos -= 20
+        
+        # BOND text
+        pdf.setFont("Helvetica-Bold", 24)
+        pdf.drawCentredString(width / 2, height / 2 - 50, "BOND")
+        
+        # Timestamp
+        pdf.setFont("Helvetica", 10)
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        pdf.drawString(72, 72, f"Generated: {timestamp}")
+        
+        pdf.save()
+        
+        # Save PDF to disk
+        pdf_data = pdf_buffer.getvalue()
+        
+        date_str = datetime.now().strftime('%Y-%m-%d')
+        output_dir = os.path.join(PDF_OUTPUT_DIR, date_str)
+        os.makedirs(output_dir, exist_ok=True)
+        
+        safe_name = ''.join(c for c in client_name if c.isalnum() or c in ' -_').strip()
+        filename = f"SPC_{safe_name}_{submission_id[:8]}.pdf"
+        output_path = os.path.join(output_dir, filename)
+        
+        with open(output_path, 'wb') as f:
+            f.write(pdf_data)
+        
+        logger.info(f"✅ SPC PDF saved: {output_path}")
+        return True, output_path
+        
+    except Exception as e:
+        logger.error(f"❌ Error generating SPC PDF: {e}")
+        return False, str(e)
+
+def delete_spc_submission(submission_id):
+    """Delete SPC submission from database after successful processing"""
+    try:
+        response = requests.delete(
+            f"{SUPABASE_URL}/rest/v1/spc_submissions?id=eq.{submission_id}",
+            headers={
+                "apikey": SUPABASE_SERVICE_KEY,
+                "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+                "Content-Type": "application/json"
+            }
+        )
+        
+        if response.status_code in [200, 204]:
+            logger.info(f"🧹 Deleted SPC submission {submission_id[:8]}...")
+            return True
+        else:
+            logger.warning(f"⚠️ Failed to delete SPC submission: {response.status_code}")
+            return False
+            
+    except Exception as e:
+        logger.error(f"❌ Error deleting SPC submission: {e}")
+        return False
+
+SPC_FAILED_CLEANUP_DAYS = 7  # Auto-delete failed SPC submissions after 7 days
+
+def cleanup_old_failed_spc():
+    """Delete failed SPC submissions older than SPC_FAILED_CLEANUP_DAYS"""
+    try:
+        cutoff_date = (datetime.now() - timedelta(days=SPC_FAILED_CLEANUP_DAYS)).isoformat()
+        
+        # First, count how many we'll delete
+        count_response = requests.get(
+            f"{SUPABASE_URL}/rest/v1/spc_submissions",
+            headers={
+                "apikey": SUPABASE_SERVICE_KEY,
+                "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+                "Content-Type": "application/json",
+                "Prefer": "count=exact"
+            },
+            params={
+                "status": "eq.failed",
+                "created_at": f"lt.{cutoff_date}",
+                "select": "id"
+            }
+        )
+        
+        if count_response.status_code == 200:
+            old_failures = count_response.json()
+            if not old_failures:
+                return 0
+            
+            count = len(old_failures)
+            
+            # Delete old failed submissions
+            delete_response = requests.delete(
+                f"{SUPABASE_URL}/rest/v1/spc_submissions",
+                headers={
+                    "apikey": SUPABASE_SERVICE_KEY,
+                    "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+                    "Content-Type": "application/json"
+                },
+                params={
+                    "status": "eq.failed",
+                    "created_at": f"lt.{cutoff_date}"
+                }
+            )
+            
+            if delete_response.status_code in [200, 204]:
+                if count > 0:
+                    logger.info(f"🧹 Cleaned up {count} failed SPC submission(s) older than {SPC_FAILED_CLEANUP_DAYS} days")
+                return count
+        
+        return 0
+        
+    except Exception as e:
+        logger.error(f"❌ Error cleaning up old failed SPC submissions: {e}")
+        return 0
+
+def process_single_spc_submission(submission):
+    """Process a single SPC submission"""
+    submission_id = submission.get('id')
+    client_name = f"{submission.get('first_name', '')} {submission.get('last_name', '')}".strip()
+    
+    logger.info(f"📋 Processing SPC: {client_name}")
+    
+    # Mark as processing
+    update_spc_status(submission_id, 'processing')
+    
+    # Generate PDF
+    success, result = generate_spc_pdf(submission)
+    
+    if success:
+        output_path = result
+        
+        # Send email
+        send_email_with_pdf(output_path, f"SPC - {client_name}")
+        
+        # Delete from database (no historical data needed)
+        delete_spc_submission(submission_id)
+        
+        logger.info(f"✅ SPC COMPLETED: {client_name}")
+        return True
+    else:
+        # Mark as failed (keep in DB for debugging)
+        update_spc_status(submission_id, 'failed', result)
+        logger.error(f"❌ SPC FAILED: {client_name} - {result}")
+        return False
+
 def poll_for_submissions():
     """Background thread that polls for pending submissions"""
     logger.info(f"🔄 Auto-polling started (interval: {POLL_INTERVAL_SECONDS}s)")
     
+    last_archive_check = None
+    ARCHIVE_CHECK_INTERVAL = 3600  # Check for archiving once per hour
+    
     while True:
         try:
+            # Poll for MASTER BOND SHEET submissions
             pending = fetch_pending_submissions()
             
             if pending:
-                logger.info(f"📬 Found {len(pending)} pending submission(s)")
+                logger.info(f"📬 Found {len(pending)} pending BOND submission(s)")
                 for submission in pending:
-                    process_with_retry(submission)  # 🎖️ Use retry wrapper
+                    process_with_retry(submission)
+            
+            # Poll for SPC submissions
+            pending_spc = fetch_pending_spc_submissions()
+            
+            if pending_spc:
+                logger.info(f"📬 Found {len(pending_spc)} pending SPC submission(s)")
+                for spc_submission in pending_spc:
+                    process_single_spc_submission(spc_submission)
+            
+            # Run maintenance tasks once per hour
+            current_time = time.time()
+            if last_archive_check is None or (current_time - last_archive_check) >= ARCHIVE_CHECK_INTERVAL:
+                archive_old_folders()
+                cleanup_old_failed_spc()  # Clean up failed SPC submissions older than 7 days
+                last_archive_check = current_time
             
         except Exception as e:
             logger.error(f"❌ Polling error: {e}")
@@ -2371,9 +2570,194 @@ def start_auto_polling():
     logger.info("🚀 Auto-polling thread started!")
 
 
+QPDF_PATH = '/opt/homebrew/bin/qpdf'
+ARCHIVE_AFTER_DAYS = 7  # Archive folders older than 7 days
+
+def archive_old_folders():
+    """Archive date folders older than ARCHIVE_AFTER_DAYS into zip files"""
+    try:
+        archives_dir = os.path.join(PDF_OUTPUT_DIR, 'archives')
+        os.makedirs(archives_dir, exist_ok=True)
+        
+        cutoff_date = datetime.now() - timedelta(days=ARCHIVE_AFTER_DAYS)
+        archived_count = 0
+        
+        for folder_name in os.listdir(PDF_OUTPUT_DIR):
+            folder_path = os.path.join(PDF_OUTPUT_DIR, folder_name)
+            
+            # Skip if not a directory or if it's the archives folder
+            if not os.path.isdir(folder_path) or folder_name == 'archives':
+                continue
+            
+            # Try to parse folder name as date (YYYY-MM-DD format)
+            try:
+                folder_date = datetime.strptime(folder_name, '%Y-%m-%d')
+            except ValueError:
+                continue  # Skip folders that aren't date-named
+            
+            # Check if folder is old enough to archive
+            if folder_date < cutoff_date:
+                zip_path = os.path.join(archives_dir, f"{folder_name}.zip")
+                
+                # Skip if already archived
+                if os.path.exists(zip_path):
+                    logger.info(f"📦 Archive already exists: {zip_path}")
+                    # Delete the original folder since archive exists
+                    shutil.rmtree(folder_path)
+                    logger.info(f"🧹 Removed already-archived folder: {folder_name}")
+                    continue
+                
+                # Create zip archive
+                logger.info(f"📦 Archiving {folder_name}...")
+                with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                    for root, dirs, files in os.walk(folder_path):
+                        for file in files:
+                            file_path = os.path.join(root, file)
+                            arcname = os.path.join(folder_name, file)
+                            zipf.write(file_path, arcname)
+                
+                # Verify zip was created successfully
+                if os.path.exists(zip_path) and os.path.getsize(zip_path) > 0:
+                    # Get sizes for logging
+                    original_size = sum(
+                        os.path.getsize(os.path.join(folder_path, f))
+                        for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))
+                    )
+                    zip_size = os.path.getsize(zip_path)
+                    
+                    # Delete original folder
+                    shutil.rmtree(folder_path)
+                    archived_count += 1
+                    
+                    compression_ratio = (1 - zip_size / original_size) * 100 if original_size > 0 else 0
+                    logger.info(f"✅ Archived {folder_name}: {original_size/1024/1024:.1f}MB → {zip_size/1024/1024:.1f}MB ({compression_ratio:.0f}% smaller)")
+                else:
+                    logger.error(f"❌ Failed to create archive for {folder_name}")
+        
+        if archived_count > 0:
+            logger.info(f"📦 Archived {archived_count} folder(s)")
+        
+    except Exception as e:
+        logger.error(f"❌ Archive error: {e}")
+
+def check_qpdf():
+    """Verify qpdf is installed and available"""
+    try:
+        result = subprocess.run([QPDF_PATH, '--version'], capture_output=True, text=True)
+        if result.returncode == 0:
+            version = result.stdout.strip().split('\n')[0]
+            logger.info(f"✅ qpdf found: {version}")
+            return True
+        else:
+            logger.error("❌ qpdf not found or not working")
+            return False
+    except FileNotFoundError:
+        logger.error(f"❌ qpdf not installed at {QPDF_PATH}! Run: brew install qpdf")
+        return False
+
+
+@app.route('/api/test-archive', methods=['POST'])
+@cross_origin()
+def test_archive():
+    """Manually trigger the archive process for testing"""
+    logger.info("📦 Manual archive triggered...")
+    archive_old_folders()
+    
+    # Return archive status
+    archives_dir = os.path.join(PDF_OUTPUT_DIR, 'archives')
+    archives = []
+    if os.path.exists(archives_dir):
+        archives = [f for f in os.listdir(archives_dir) if f.endswith('.zip')]
+    
+    return jsonify({
+        'success': True,
+        'message': 'Archive process completed',
+        'archives': archives
+    })
+
+
+@app.route('/api/test-disk-generation', methods=['POST'])
+@cross_origin()
+def test_disk_generation():
+    """
+    Test endpoint for disk-based PDF generation.
+    Send test data to generate a full package without database interaction.
+    """
+    logger.info("=" * 60)
+    logger.info("🧪 TEST DISK-BASED GENERATION")
+    logger.info("=" * 60)
+    
+    try:
+        # Get test data from request or use defaults
+        test_data = request.get_json() or {}
+        
+        # Use provided data or create test data
+        package_data = test_data.get('packageData', {
+            'clientFullName': test_data.get('clientName', 'TEST CLIENT NAME'),
+            'bondNumber': test_data.get('bondNumber', 'TEST-123456'),
+            'bondAmount': test_data.get('bondAmount', '100,000.00'),
+            'bidDate': test_data.get('bidDate', '01/01/2025'),
+            'contractDescription': test_data.get('contractDescription', 'Test Contract Description'),
+            'contractNumber': test_data.get('contractNumber', 'TEST-CONTRACT-001'),
+            'obligeeFullName': test_data.get('obligeeFullName', 'TEST OBLIGEE'),
+            'corporateSuretyName': 'WESTCHESTER FIRE INSURANCE COMPANY',
+            'clientAddress': test_data.get('clientAddress', '123 Test Street'),
+            'clientCity': test_data.get('clientCity', 'Test City'),
+            'clientState': test_data.get('clientState', 'CA'),
+            'clientZip': test_data.get('clientZip', '90210'),
+            'clientPhone': test_data.get('clientPhone', '555-555-5555'),
+            'clientEIN': test_data.get('clientEIN', '12-3456789'),
+            'obligeeAddress': test_data.get('obligeeAddress', '456 Obligee Ave'),
+            'obligeeCity': test_data.get('obligeeCity', 'Obligee City'),
+            'obligeeState': test_data.get('obligeeState', 'NY'),
+            'obligeeZip': test_data.get('obligeeZip', '10001'),
+        })
+        
+        client_name = package_data.get('clientFullName', 'TEST CLIENT')
+        
+        success, result = generate_package_disk_based(package_data, client_name)
+        
+        if success:
+            file_size_kb = os.path.getsize(result) / 1024
+
+            # Count pages in final PDF
+            reader = PdfReader(result)
+            page_count = len(reader.pages)
+            
+            # Auto-open PDF if requested
+            if test_data.get('openPdf', False):
+                subprocess.run(['open', result])
+                logger.info(f"📂 Opened PDF: {result}")
+
+            return jsonify({
+                'success': True,
+                'message': 'TEST PASSED - Disk-based generation successful!',
+                'output_path': result,
+                'file_size_kb': round(file_size_kb, 1),
+                'page_count': page_count
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': result
+            }), 500
+            
+    except Exception as e:
+        logger.error(f"Test failed: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
 if __name__ == '__main__':
+    # Check qpdf is installed
+    if not check_qpdf():
+        logger.error("⚠️ qpdf is required for bulletproof PDF generation!")
+        logger.error("   Install with: brew install qpdf")
+    
     # Start auto-polling in background
     start_auto_polling()
-    
+
     port = int(os.environ.get('PORT', 5001))  # 🔥 FIXED: Default to port 5001!
     app.run(host='0.0.0.0', port=port, debug=True)
